@@ -16,7 +16,7 @@ times 90-($-$$) db 0
 
 start:
         mov [bootDiskId] , dl
-	cli
+		cli
     	cld
     	jmp 0x0000:.initialise_cs
   	.initialise_cs:
@@ -47,13 +47,107 @@ start:
 	cmp dh , byte [DISK_RWBUFFER]
 	jne @b
 
-        mov eax , [bi_boot_LBA]
-	add eax , [DISK_RWBUFFER+140]
+	mov dl ,[bootDiskId]
+    mov eax , [bi_boot_LBA]
+	add eax , [DISK_RWBUFFER+156+2]
 	mov cx , 1
 	mov bx , 0x500 
 	call read_2k_sectors
+
+
+	mov ax , 2048
+	mov dx , DISK_RWBUFFER
+	add ax , dx
+@@:
 	
-	jmp $
+	mov bx , dx
+	add bx , 32
+	mov cl , [ds:bx]
+
+	mov bx , dx
+	add bx , 33
+	mov si , bx
+
+	mov di , System16Dir
+	rep cmpsb
+	je @f
+
+	mov bx , dx
+	add dx , [bx]
+
+	jmp @b
+
+@@:
+
+
+	mov eax , [bi_boot_LBA]
+	add eax , [edx + 2]
+
+	mov dl ,[bootDiskId]
+	mov cx , 1
+	mov bx , 0x500 
+	call read_2k_sectors
+
+	mov ax , 2048
+	mov dx , DISK_RWBUFFER
+	add ax , dx
+@@:
+	
+	mov bx , dx
+	add bx , 32
+	mov cl , [ds:bx]
+
+	mov bx , dx
+	add bx , 33
+	mov si , bx
+
+	mov di , BootmanFile
+	rep cmpsb
+	je @f
+
+	mov bx , dx
+	add dx , [bx]
+
+	jmp @b
+
+@@:
+
+	push edx
+
+	mov eax , [edx+10]
+	mov ebx , 2048
+	div ebx
+
+	mov cx , 0
+	cmp dx , 0
+	jng @f
+		mov cx , 1
+	@@:
+
+	add cx , ax
+
+	pop edx
+
+	mov eax , [edx+2]
+	add eax , [bi_boot_LBA]
+
+	mov dl ,[bootDiskId]
+	mov bx , 0x2000 
+	call read_2k_sectors
+
+	mov dl ,[bootDiskId]
+	cli
+    mov bp , 0x200
+    mov es , bp
+    mov ds , bp
+    mov ss , bp
+    mov sp , 0xFFFF
+    sti
+
+    jmp 0x200:0
+
+search_dir:
+
 boot_error:
 .notSupported:
 	mov si , NotSupportedStr
@@ -63,6 +157,8 @@ boot_error:
         int 18h
 
 NotSupportedStr db "NotSupported",0x00
+System16Dir db "system16",0x00
+BootmanFile db "bootman.SYS",0x00
 
 ; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 ; display a string to the screen using the BIOS

@@ -11,13 +11,14 @@ all-img: Bootman.img
 all-clean: clean
 
 
-Bootman.iso: boot-bios boot-cd bootman
+Bootman.iso: boot-bios boot-cd bootman.SYS
 	rm -rf iso_root
 	mkdir -p iso_root
+	mkdir -p iso_root/system16
 	cp -r osRoot/* iso_root/
 	mkdir iso_root/boot
 	cp -r boot/*.bin iso_root/boot/
-	cp -r bootman.SYS iso_root/system16/
+	cp Bootman/bootman.SYS iso_root/system16/
 	mkisofs -U -J \
 		-b boot/cdboot.bin\
 		-no-emul-boot -c boot/boot.cat\
@@ -50,8 +51,8 @@ boot-bios:
 	fasm boot/mbr.asm
 boot-cd:
 	fasm boot/cdboot.asm
-bootman:
-	fasm bootman.asm
+bootman.SYS:
+	fasm Bootman/bootman.asm
 
 clean:
 	rm -rf Bootman.iso Bootman.img
