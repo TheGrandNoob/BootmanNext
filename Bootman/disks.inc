@@ -1,5 +1,8 @@
 UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 
+current_sector dq 0
+
+
 align 8
 dapack:
     	dapack_size:    db 0x10
@@ -136,7 +139,8 @@ disks_chdir:
 
     mov al , [ds:si]
     mov [currentPath] , al
-    
+
+
 
 @@:
 
