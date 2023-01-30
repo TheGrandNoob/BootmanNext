@@ -2,6 +2,8 @@ use16
 align 16
 FORMAT BINARY AS 'SYS'
 
+prg_begin:
+
 jmp main
 
 
@@ -10,16 +12,10 @@ HelloWorldStr db "HelloWorld$"
 main:
 
         call disks_init
-        
         call int21h_init
-
-        in al, 0x92
-        or al, 2
-        out 0x92, al
-        
+	call memory_init        
 
         call shell_task
-
         call poweroff
 
 
@@ -47,5 +43,9 @@ include 'commondata.inc'
 include 'int21h.inc'
 include 'disks.inc'
 include 'shell.inc'
+include 'memory.inc'
 align 16
 DISK_RW_BUFFER:
+rb 4096
+
+prg_end:
