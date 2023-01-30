@@ -1,21 +1,72 @@
+SEGMENT_SIZE equ 0x1000
 
-SEGMANT_ALLOC_TABLE_LO_SEG  dw 0
-SEGMANT_ALLOC_TABLE_LO_SIZE  dw 0
-SEGMANT_ALLOC_TABLE_LO_ADDR dw 0
 
-SEGMANT_ALLOC_TABLE_HI_SEG  dw 0
-SEGMANT_ALLOC_TABLE_HI_SIZE  dw 0
-SEGMANT_ALLOC_TABLE_HI_ADDR dw 0
+SEGMENT_ALLOC_TABLE_LO_SEG  dw 0
+SEGMENT_ALLOC_TABLE_LO_SIZE  dw 0
+SEGMENT_ALLOC_TABLE_LO_ADDR dw 0
 
-;EBDA_ADDR dq 0
+SEGMENT_ALLOC_TABLE_HI_SEG  dw 0
+SEGMENT_ALLOC_TABLE_HI_SIZE  dw 0
+SEGMENT_ALLOC_TABLE_HI_ADDR dw 0
 
-;LOW_MEMORY_AMOUNT_KB dq 0
-;HI_MEMORY_AMOUNT_KB dq 0
-;HI_PROTECTED_MEMORY_AMOUNT_64KB dq 0
+memory_init:
+  	
+	in al, 0x92
+    or al, 2
+	out 0x92, al
 
+	call memory_detect
+		
+	mov bp , SEGMENT_SIZE
+	mov es , bp
+
+	mov si , 0	
+
+	mov bx , 8*4
+	mov ax , 0
+	mov dx , 1
+	div bx
+	add ax , 3
+	mov [es:si] , ax		;STORE Segment entry table size
+	add si , 2
+	mov [es:si] , byte 0x00
+	
+
+	;mov ax , [LOW_MEMORY_AMOUNT_KB] 
+
+	mov [SEGMENT_ALLOC_TABLE_LO_SEG] , es
+	mov si ,  [es:si]
+	mov [SEGMENT_ALLOC_TABLE_LO_ADDR] , si
+
+
+	mov bx , 0
+	call memory_set_segment_status_used
+
+	mov bx , SEGMENT_SIZE
+	call memory_set_segment_status_used
+
+	mov bx , SEGMENT_SIZE
+	call memory_set_segment_status_used
+
+	call memory_search_free_seg
+	test ax , ax
+
+
+	ret
+
+;in
+;ax - size
+
+;out 
+;es - seg
+;ax - addr
+
+malloc:
+
+	ret
 memory_detect:
 
-        xor cx , cx
+    xor cx , cx
 	xor dx , dx
 	mov ax , 0xE801
 	int 15h
@@ -43,34 +94,311 @@ memory_detect:
 	mov [LOW_MEMORY_AMOUNT_KB] , ax
 	ret
 
+;out 
+;es - segment
+;ax - address
+allocate_block:
+
+	ret
 ; OUT ES - allocated seg
 
 memory_allocate_segment:
 	
 	ret
 
-memory_init:
-  	
-	in al, 0x92
-        or al, 2
-        out 0x92, al
+;in
+;bx - segment
 
-	call memory_detect
-		
-	mov bp , 0x1000
+;out 
+;carry 
+;ax - error code if carry 
+memory_set_segment_status_free:
+
+	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
 	mov es , bp
 	
-	mov ax , [LOW_MEMORY_AMOUNT_KB] 
-	mov dl , 8*4
+	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
 
-	mov si , 0
-	mov [es:si] , al
+	mov ax , bx
+	mov bx , SEGMENT_SIZE
 	
+	div bx
+	mov bl , 8
+	div bl
 
-	div dl
+	xchg bx , ax
+
+	xor ax , ax
+	mov al , bl
+	add si , ax
+
+	mov al , 1
+
+	mov cl , bh
+	sal al , cl
+
+	mov bl , [es:si]
+
+	not al
+	and bl , al
+	mov [es:si] , bl
+
+	ret
+
+	memory_set_segment_status_used:
+
+	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
+	mov es , bp
 	
+	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
+
+	mov ax , bx
+	mov bx , SEGMENT_SIZE
+	
+	div bx
+	mov bl , 8
+	div bl
+
+	xchg bx , ax
+
+	xor ax , ax
+	mov al , bl
+	add si , ax
+
+	mov al , 1
+
+	mov cl , bh
+	sal al , cl
+
+	mov bl , [es:si]
+	or bl , al
+	mov [es:si] , bl
+
 	ret
 
 
+;out
+;es - free segment
+
+memory_search_free_seg:
+	
+	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
+	mov es , bp
+	
+	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
+	mov bx , [SEGMENT_ALLOC_TABLE_LO_SIZE]
+	add bx , si
+
+.lo_searchLoop:
+	mov al , [es:si]
+	mov ah , al
+
+	and al , 00000001b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+
+@@:
+	mov al , ah
+	and al , 00000010b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+	
+	add ax , 1
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+	jnz @f
+@@:
+	mov al , ah
+	and al , 00000100b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+	
+	add ax , 2
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+	jnz @f
+@@:
+	mov al , ah
+	and al , 00001000b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+	
+	add ax , 3
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+	jnz @f
+@@:
+	mov al , ah
+	and al , 00010000b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+	
+	add ax , 4
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+	jnz @f
+@@:
+	mov al , ah
+	and al , 00100000b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+	
+	add ax , 5
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+	jnz @f
+@@:
+	mov al , ah
+	and al , 01000000b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+	
+	add ax , 6
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+	jnz @f
+@@:
+	mov al , ah
+	and al , 10000000b
+	test al , al
+	jnz @f
+
+	mov al , ah
+
+	mov bx , si
+	sub bx , word [es:0]
+	xchg bx , ax
+	mov dx , 8
+	mul dx
+	
+	add ax , 7
+
+	mov dx , SEGMENT_SIZE
+	mul dx
+
+	jmp .end
+
+	jnz @f
+@@:
+
+	inc si
+	cmp si , bx
+	jne .lo_searchLoop
+
+.end:
+	mov bp , ax 
+	mov es , bp
+
+	ret
+
+
+;in 
+;al - val
+;cx - size
+;di - dst address
+;es - dst seg
 memset:
+
+	rep stosb
+
+	ret
+
+
+;in 
+;al - val
+;cx - size
+;di - src address
+;es - src seg
+;di - dst address
+;es - dst seg
+memcpy:
+
+	rep movsb
+
 	ret
