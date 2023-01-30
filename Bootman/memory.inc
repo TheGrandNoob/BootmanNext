@@ -1,0 +1,3 @@
+struc Memory_segmentTable{
+    
+}

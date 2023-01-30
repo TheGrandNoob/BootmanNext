@@ -10,6 +10,7 @@ struc partition{
 partitions rw 256
 currentPath rb 256
 partitionCount rb 0
+cmdLine rb 256
 
 ISO_Str db "CD001",0x00
 NTFS_Str db "NTFS",0x00

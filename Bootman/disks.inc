@@ -1,6 +1,8 @@
 UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 
 current_sector dq 0
+current_partition_type dw 0
+current_partition_disk db 0
 
 
 align 8
@@ -128,7 +130,7 @@ disks_init:
 ; DX - path
 disks_chdir:
 
-    push ax si
+    push bx ax si
     mov si , dx
     inc si
     mov al , byte [ds:si]
@@ -140,11 +142,19 @@ disks_chdir:
     mov al , [ds:si]
     mov [currentPath] , al
 
+    mov al ,  byte [ds:si]
+    mov bl , 2
+    mul bl
+    add ax , partitions
 
+    mov si , ax
+
+    mov al , byte [ds:si]
+    mov [current_partition_disk] , al
 
 @@:
 
 .end:
-    pop si ax
+    pop si ax bx
 
     ret
