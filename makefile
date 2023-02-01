@@ -58,3 +58,4 @@ clean:
 	rm -rf Bootman.iso Bootman.img
 	rm -rf *.bin
 	rm -rf iso_root
+	rm -rf *.SYS

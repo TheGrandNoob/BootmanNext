@@ -36,26 +36,11 @@ memory_init:
 	mov [SEGMENT_ALLOC_TABLE_LO_ADDR] , si
 
 	mov ax , [LOW_MEMORY_AMOUNT_KB]
-	mov cx ,  1024
-	mul cx
 
-	mov cx ,  SEGMENT_SIZE*10
+	mov cx , 64
 	div cx
 
-
-	cmp dx , 0
-	je @f
-	inc ax
-	mov dx , 0
-@@:
-
-	mov cx , 8
-	div cx
-
-	cmp dx , 0
-	je @f
-	inc ax
-@@:
+	dec ax
 
 	mov [SEGMENT_ALLOC_TABLE_LO_SIZE] , ax
 
@@ -73,6 +58,7 @@ memory_init:
 	mov ax , 1
 	mov [es:si] , ax
 	mov bx , 0
+	call memory_set_segment_status_used
 @@:
 	call memory_search_free_seg
 	
@@ -131,11 +117,20 @@ memory_detect:
 ;ax - address
 allocate_block:
 
+	call memory_search_free_seg
+
 	ret
 ; OUT ES - allocated seg
 
 memory_allocate_segment:
 	
+	push bx bp
+	call memory_search_free_seg
+	mov bp , es
+	mov bx , es
+	call memory_set_segment_status_used
+
+	pop bp bx
 	ret
 
 ;in
@@ -148,27 +143,23 @@ memory_set_segment_status_free:
 
 	push bp es si bx cx
 
+	xor dx , dx
+
 	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
 	mov es , bp
-	
 	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
 
-	mov ax , bx
+	mov ax , bx 
 	mov bx , SEGMENT_SIZE
-	
 	div bx
-	mov bl , 8
-	div bl
 
-	xchg bx , ax
+	mov bx , 8
+	div bx
 
-	xor ax , ax
-	mov al , bl
 	add si , ax
 
 	mov al , 1
-
-	mov cl , bh
+	mov cl , dl
 	sal al , cl
 
 	mov bl , [es:si]
@@ -190,32 +181,28 @@ memory_set_segment_status_used:
 
 	push bp es si bx cx
 
+	xor dx , dx
+
 	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
 	mov es , bp
-	
 	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
 
-	mov ax , bx
+	mov ax , bx 
 	mov bx , SEGMENT_SIZE
-	
 	div bx
-	mov bl , 8
-	div bl
 
-	xchg bx , ax
+	mov bx , 8
+	div bx
 
-	xor ax , ax
-	mov al , bl
 	add si , ax
 
 	mov al , 1
-
-	mov cl , bh
+	mov cl , dl
 	sal al , cl
 
-	mov bl , [es:si]
-	or bl , al
-	mov [es:si] , bl
+	mov ah , [es:si]
+	or ah , al
+	mov [es:si], ah
 
 	pop cx bx si es bp
 
@@ -232,6 +219,7 @@ memory_search_free_seg:
 	
 	push bp si di ax bx cx dx
 
+	xor dx , dx
 	xchg ax , bx
 
 	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
@@ -259,7 +247,7 @@ memory_search_free_seg:
 
 		mov ax , 0
 		cmp dx , bx
-		jg .end
+		jge .end
 
 		mov ah , [es:si]
 
