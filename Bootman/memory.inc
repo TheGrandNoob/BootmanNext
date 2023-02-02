@@ -1,6 +1,8 @@
 SEGMENT_SIZE equ 0x1000
 
 
+MEMORY_ALLOCATE_STRUCTURE_SIZE equ 0x10
+
 SEGMENT_ALLOC_TABLE_LO_SEG  dw 0
 SEGMENT_ALLOC_TABLE_LO_SIZE  dw 0
 SEGMENT_ALLOC_TABLE_LO_ADDR dw 0
@@ -16,11 +18,15 @@ memory_init:
 	out 0x92, al
 
 	call memory_detect
-		
-	mov bp , SEGMENT_SIZE
-	mov es , bp
 
-	mov si , 0	
+	mov ax , 32 
+	mov bp , 0x1000
+	mov es , bp
+	mov bx , 0x1000
+	call memory_create_heap_segment
+
+	mov si , bx 
+	inc si
 
 	mov bx , 8*4
 	mov ax , 0
@@ -57,29 +63,125 @@ memory_init:
 
 	mov ax , 1
 	mov [es:si] , ax
+
 	mov bx , 0
 	call memory_set_segment_status_used
-@@:
-	call memory_search_free_seg
-	
-	mov bp , es
-	mov bx , bp
 
-	call memory_set_segment_status_used
+	mov ax , [SEGMENT_ALLOC_TABLE_LO_SIZE]
+	call malloc
 
-	cmp bx , 0
-	jne @b
+	push ds si
 
+	mov cx , [SEGMENT_ALLOC_TABLE_LO_SIZE]
+	mov di , ax
+
+	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
+	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
+	mov ds , bp
+
+	call memcpy
+
+	pop si ds
 	ret
 
 ;in
 ;ax - size
-
 ;out 
 ;es - seg
 ;ax - addr
-
 malloc:
+
+	push bx cx dx si di es
+
+	mov bx , 0x1000
+	call memory_search_free_seg	
+
+	mov si , 2
+	mov bx , [es:si]
+
+	cmp bx , 0
+	jne @f
+
+	mov bx , 0x1000
+	mov ax , 0x20
+	call memory_create_heap_segment
+
+	xor dx , dx
+
+	mov si , 2
+	mov bx , [es:si]
+	mov cx , 0
+@@:
+
+	div bx
+
+	cmp dx , 0
+	je @f
+	inc ax
+@@:
+	mov dx , ax
+
+	mov ax , 0
+	.search_free_chunk_of_blocks:
+	mov si , dx
+
+	dec si
+	call memory_search_free_block
+
+	cmp si , 0
+	je .searchFineshed
+
+	mov cx , ax
+	mov dx , ax
+
+	.searchInSegment:
+
+		call memory_search_free_block
+
+		add cx , bx
+		cmp cx , ax
+		jne .search_free_chunk_of_blocks
+
+		dec si
+		jmp .searchInSegment
+
+	jmp .search_free_chunk_of_blocks
+
+	.searchFineshed:
+
+
+	mov si , 2
+	mov bx , [es:si]
+	mov si , dx
+
+	push si
+
+	mov cx , ax
+	mov ax , bx
+	
+	mul si
+	xchg ax , cx
+	sub ax , cx
+
+	pop si
+
+
+	
+	call memory_allocate_block
+	dec si
+
+	@@:
+		cmp si , 0
+		je @f
+
+		call memory_allocate_block
+		dec si
+
+		jmp @b
+
+	@@:
+
+	pop es di si dx cx bx 
 
 	ret
 memory_detect:
@@ -112,16 +214,247 @@ memory_detect:
 	mov [LOW_MEMORY_AMOUNT_KB] , ax
 	ret
 
-;out 
-;es - segment
-;ax - address
-allocate_block:
 
-	call memory_search_free_seg
+
+;in 
+;ax - block size
+;es - segment address
+;out
+;bx - end of heap structure
+memory_create_heap_segment:
+
+	mov cx , ax
+
+	xor dx , dx
+	mov bx , ax
+	mov ax , (SEGMENT_SIZE*0x10-1)
+	div cx
+
+	xor dx , dx
+	mov bx , 8
+	div bx
+
+	push ax bx cx di si
+
+	add cx , ax
+	mov al , 0
+	mov di , 0
+	call memset
+
+	pop si di cx bx ax
+
+	mov si , 0
+	mov word [es:si] , ax
+
+	add si , 2
+	mov word [es:si] , cx
+
+	add si , 2
+	mov byte [es:si] , 1
+
+	mov si , 0
+	add si , MEMORY_ALLOCATE_STRUCTURE_SIZE
+
+	mov bx , ax
+	add bx , MEMORY_ALLOCATE_STRUCTURE_SIZE
+
+	push bx
+
+	mov di , 0
+
+	.alloc_memalloc_struct_loop:
+		mov di , 0
+		.alloc_memalloc_struct_loop_byte:
+		
+		cmp bx , 0
+		jle .end
+
+
+		push cx
+
+		mov cx , di
+		mov al , 1
+		sal al , cl
+		
+		mov ah , [es:si]
+		or ah , al
+		mov [es:si] , ah
+
+		pop cx
+
+		inc di
+		sub bx , cx
+
+		cmp di , 8
+		jne .alloc_memalloc_struct_loop_byte
+		inc si
+
+	jmp .alloc_memalloc_struct_loop
+
+.end:
+
+	pop bx
+	ret
+
+
+
+
+;in
+;es - segment
+;ax - start from
+;out
+;ax - block address
+memory_allocate_block:
+
+	
+	push bx cx dx si di 
+
+	xor dx , dx
+	
+	mov si , 2
+	mov bx , [es:si]
+	add ax , bx
+	div bx
+
+	mov cx , ax
+	
+	xor dx , dx
+	mov bx , 7
+	div bx
+
+	mov di , dx
+
+	mov si , 0
+	mov bx , [es:si]
+
+	mov si , MEMORY_ALLOCATE_STRUCTURE_SIZE
+	add si , ax
+	mov di , dx
+	
+	mov dx , cx
+
+	.lo_searchLoop:
+
+	.lo_search_loop_byte:
+		cmp dx , bx
+		jge .end
+
+		mov ah , [es:si]
+
+		mov cx , di
+		mov al , 1
+		sal al , cl
+		and ah , al
+
+		cmp ah , 0
+		jne @f
+
+			mov ah , [es:si]
+			mov cx , di
+			mov al , 1
+			sal al , cl 
+			or ah , al
+			mov [es:si] , ah
+
+			mov ax , dx
+			mov si , 2
+			mov bx , [es:si]
+			mul bx
+			
+			jmp .end
+
+		@@:
+
+		inc dx
+		inc di
+		cmp di , 8
+		jnge .lo_search_loop_byte
+
+	mov di , 0	
+	inc si
+	jmp .lo_searchLoop
+
+.end:
+
+	pop di si dx cx bx
 
 	ret
-; OUT ES - allocated seg
+;in
+;es - segment
+;ax - start from
+;out
+;ax - block address
+memory_search_free_block:
 
+	push bx cx dx si di 
+
+	xor dx , dx
+	
+	mov si , 2
+	mov bx , [es:si]
+	add ax , bx
+	div bx
+
+	mov cx , ax
+	
+	xor dx , dx
+	mov bx , 7
+	div bx
+
+	mov di , dx
+
+	mov si , 0
+	mov bx , [es:si]
+
+	mov si , MEMORY_ALLOCATE_STRUCTURE_SIZE
+	add si , ax
+	mov di , dx
+	
+	mov dx , cx
+
+	.lo_searchLoop:
+
+	.lo_search_loop_byte:
+		cmp dx , bx
+		jge .end
+
+		mov ah , [es:si]
+
+		mov cx , di
+		mov al , 1
+		sal al , cl
+		and ah , al
+
+		cmp ah , 0
+		jne @f
+
+			mov ax , dx
+			mov si , 2
+			mov bx , [es:si]
+			mul bx
+			
+			jmp .end
+
+		@@:
+
+		inc dx
+		inc di
+		cmp di , 8
+		jnge .lo_search_loop_byte
+
+	mov di , 0	
+	inc si
+	jmp .lo_searchLoop
+
+.end:
+
+	pop di si dx cx bx
+
+	ret
+
+; OUT ES - allocated seg
+;out 
+;es - segment
 memory_allocate_segment:
 	
 	push bx bp
@@ -135,7 +468,6 @@ memory_allocate_segment:
 
 ;in
 ;bx - segment
-
 ;out 
 ;carry 
 ;ax - error code if carry 
@@ -153,7 +485,7 @@ memory_set_segment_status_free:
 	mov bx , SEGMENT_SIZE
 	div bx
 
-	mov bx , 8
+	mov bx , 7
 	div bx
 
 	add si , ax
@@ -173,10 +505,8 @@ memory_set_segment_status_free:
 	ret
 ;in
 ;bx - segment
-
 ;out 
 ;carry - error
-
 memory_set_segment_status_used:
 
 	push bp es si bx cx
@@ -191,7 +521,7 @@ memory_set_segment_status_used:
 	mov bx , SEGMENT_SIZE
 	div bx
 
-	mov bx , 8
+	mov bx , 7
 	div bx
 
 	add si , ax
@@ -211,10 +541,8 @@ memory_set_segment_status_used:
 ;in 
 ;bx - start from
 ;
-
 ;out
 ;es - free segment
-
 memory_search_free_seg:
 	
 	push bp si di ax bx cx dx
@@ -226,8 +554,6 @@ memory_search_free_seg:
 	mov es , bp
 	
 	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
-	;mov bx , [SEGMENT_ALLOC_TABLE_LO_SIZE]
-	;add bx , si
 
 	mov cx , SEGMENT_SIZE
 	div cx
@@ -298,21 +624,19 @@ memory_search_free_seg:
 ;di - dst address
 ;es - dst seg
 memset:
-
+	push si ds
 	rep stosb
-
+	pop ds si
 	ret
 
-
 ;in 
-;al - val
 ;cx - size
-;di - src address
-;es - src seg
+;si - src address
+;ds - src seg
 ;di - dst address
 ;es - dst seg
 memcpy:
-
+	push si ds
 	rep movsb
-
+	pop ds si
 	ret
