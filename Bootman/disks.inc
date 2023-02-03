@@ -1,6 +1,9 @@
+include "iso9660.inc"
+
 UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 
-PartitionLabels db "ABCDEFG$"
+PartitionLabels db "ABCDEFGHIJKLMNOPQRSTUVWXYZ$"
+lastLableID dw 0
 
 current_sector dq 0
 current_partition_type dw 0
@@ -112,7 +115,10 @@ disks_init_varables:
 
 disks_init:
 
-    mov ax , ( partitiontableElementSize * 256)
+    mov ax , 40
+    call malloc
+
+    mov ax , ( partitiontableElementSize * 16)
     mov [partitionTableSize] , ax
     call malloc 
 
@@ -123,6 +129,7 @@ disks_init:
     mov dl , [MainDiskID] 
     call validate_fs
     jc @f
+    mov bh , 'A'
     call attach_partition
 @@:
     ret
@@ -146,32 +153,17 @@ validate_fs:
     pop eax
     ret
 
-;in
-;dl - diskIndex
-;eax - sector
 ;out
-;equal if iso
-iso_validate:
-    push es bp bx cx dx si di
-    mov bp , cs
-    mov es , bp
+;al - label
+disks_getLabel:
+    push si
 
-    mov bx , KRNL_DISK_IO_BUFFER
-    mov cx , 1
+    mov si ,  [lastLableID]
+    mov al , [ds:si]
+    inc si
+    mov [lastLableID] , si
 
-    call read_sectors
-
-    mov dx , ISO_Str
-    call strlen
-
-    mov si , ISO_Str
-    mov di , KRNL_DISK_IO_BUFFER
-    call memcmp
-
-    rep cmpsb
-    
-    pop di si dx cx bx bp es
-
+    pop si
     ret
 
 ;eax - firstSector
@@ -185,10 +177,13 @@ attach_partition:
 
     call validate_fs
     
-    mov di , partitionTableSize
-    add di , partitionTableAddr
-    mov si , partitionTableAddr
-    mov bp , partitionTableSeg
+    cmp cx , 0
+    je .end
+
+    mov di , [partitionTableSize]
+    add di , [partitionTableAddr]
+    mov si , [partitionTableAddr]
+    mov bp , [partitionTableSeg]
     mov es , bp
 
     push ax 
@@ -204,6 +199,8 @@ attach_partition:
     @@:
     pop ax
 
+
+
     mov byte [es:si] , PARTITON_FLAG_MOUTED
     add si , 1
     mov [es:si] , eax
@@ -213,8 +210,16 @@ attach_partition:
     mov [es:si] , dl
     add si , 1
     mov [es:si] , dh
+
     add si , 1
-    mov [es:si] , dh
+    cmp bx , 0
+    jne @f
+    call disks_getLabel    
+    mov bh , al
+@@:
+    mov [es:si] , bh
+
+.end:
     ret
 
 ; ---- partition table ----

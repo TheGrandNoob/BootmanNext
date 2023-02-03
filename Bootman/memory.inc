@@ -67,21 +67,6 @@ memory_init:
 	mov bx , 0
 	call memory_set_segment_status_used
 
-	mov ax , [SEGMENT_ALLOC_TABLE_LO_SIZE]
-	call malloc
-
-	push ds si
-
-	mov cx , [SEGMENT_ALLOC_TABLE_LO_SIZE]
-	mov di , ax
-
-	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
-	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
-	mov ds , bp
-
-	call memcpy
-
-	pop si ds
 	ret
 
 ;in
@@ -128,13 +113,12 @@ malloc:
 	dec si
 	call memory_search_free_block
 
-	cmp si , 0
-	je .searchFineshed
-
 	mov cx , ax
-	mov dx , ax
 
 	.searchInSegment:
+
+		cmp si , 0
+		je .searchFineshed
 
 		call memory_search_free_block
 
@@ -143,9 +127,8 @@ malloc:
 		jne .search_free_chunk_of_blocks
 
 		dec si
-		jmp .searchInSegment
 
-	jmp .search_free_chunk_of_blocks
+	jmp .searchInSegment
 
 	.searchFineshed:
 
@@ -158,18 +141,14 @@ malloc:
 
 	mov cx , ax
 	mov ax , bx
-	
 	mul si
+
 	xchg ax , cx
 	sub ax , cx
 
 	pop si
 
-
-	
-	call memory_allocate_block
-	dec si
-
+	push ax
 	@@:
 		cmp si , 0
 		je @f
@@ -181,6 +160,7 @@ malloc:
 
 	@@:
 
+	pop ax
 	pop es di si dx cx bx 
 
 	ret

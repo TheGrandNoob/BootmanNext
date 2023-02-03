@@ -5,6 +5,7 @@
 ;cx - lenght 
 strlen:
     push ax dx si 
+    mov si , dx
     mov dx , 0
 
 @@:

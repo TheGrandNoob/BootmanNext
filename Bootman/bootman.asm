@@ -6,16 +6,29 @@ prg_begin:
 
 jmp main
 
+diskSubSysErrorStr db "Disk subsystem error$"
+
 main:
 
         call disks_init_varables
 
         call int21h_init
-	call memory_init        
+	call memory_init  
+              
         call disks_init
+        jc .diskError
 
         call shell_task
         call poweroff
+
+.diskError:
+        mov dx , diskSubSysErrorStr
+        jmp .error
+.error:
+
+        int 21h
+        mov ah , 0
+        int 16h
 
 
 poweroff:
