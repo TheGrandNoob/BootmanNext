@@ -6,14 +6,13 @@ prg_begin:
 
 jmp main
 
-
-HelloWorldStr db "HelloWorld$"
-
 main:
 
-        call disks_init
+        call disks_init_varables
+
         call int21h_init
 	call memory_init        
+        call disks_init
 
         call shell_task
         call poweroff
@@ -44,6 +43,8 @@ include 'int21h.inc'
 include 'disks.inc'
 include 'shell.inc'
 include 'memory.inc'
+include 'string.inc'
+
 align 16
 DISK_RW_BUFFER:
 rb 4096

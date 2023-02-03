@@ -640,3 +640,15 @@ memcpy:
 	rep movsb
 	pop ds si
 	ret
+
+;in 
+;si - buf1 addr
+;ds - buf1 seg
+;di - buf2 addr
+;es - buf2 seg
+;cx - lenght
+;out
+;carry if equals
+memcmp:
+	rep cmpsb
+	ret

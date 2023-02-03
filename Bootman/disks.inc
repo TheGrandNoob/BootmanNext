@@ -1,9 +1,23 @@
 UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 
+PartitionLabels db "ABCDEFG$"
+
 current_sector dq 0
 current_partition_type dw 0
 current_partition_disk db 0
 
+partitionTableAddr dw 0
+partitionTableSize dw 0
+partitionTableSeg dw 0
+; ---- partition table ----
+; db flags
+; dq firtsSector
+; dw fsType
+; db ID
+; db partitionIndex
+; db label
+
+partitiontableElementSize equ 10
 
 align 8
 dapack:
@@ -14,6 +28,11 @@ dapack:
     	dapack_segment: dw 0
     	dapack_LBA:     dq 0
 
+;in
+;eax - lba
+;cx - num of sectors
+;bx - offset
+;es - segment
 read_sectors:
     	pusha
     	mov dword [dapack_LBA], eax
@@ -84,77 +103,124 @@ disks_getbpbType:
 
     ret
 
-disks_init:
+disks_init_varables:
 
     mov [MainDiskID] , dl
+
     
-    ;eax - num of drives
-    mov bx , 0x40
-    mov es , bp
-    mov ax , 0
-    mov ah , byte [es:75]
+    ret
 
-    mov si , ax
+disks_init:
 
-    mov eax , 0 
-    mov dl , [MainDiskID]
-    call disks_getbpbType
+    mov ax , ( partitiontableElementSize * 256)
+    mov [partitionTableSize] , ax
+    call malloc 
 
-    cmp eax , 0
-    jne @F
+    mov [partitionTableAddr] , ax
+    mov [partitionTableSeg] , es
 
-    mov eax , 16 
-    mov dl , [MainDiskID]
-    call disks_getbpbType
-
-    cmp eax , 0
-    jne @F
-
-.error:
-    mov dx , UnsoportedBootPartitionStr
-    call int21h_display_string
-
-    jmp $
-    @@:
-
-    mov byte [partitions + 2*'C' ] , dl
-    cmp eax , 0
-    jne @F
-    mov byte [partitions + 2*'C' +1] , 0
+    mov eax , 16
+    mov dl , [MainDiskID] 
+    call validate_fs
+    jc @f
+    call attach_partition
 @@:
-    mov byte [partitions + 2*'C' +1] , dh
-    mov word [partitions + 2*'C' +2] , ax
     ret
 
 
-; DX - path
-disks_chdir:
+;in
+;eax - partition sector
+;dl - disk id
+;out
+;cx - partion fstype
+validate_fs:
 
-    push bx ax si
-    mov si , dx
-    inc si
-    mov al , byte [ds:si]
-    dec si
+    push eax
 
-    cmp al , ':'
-    jne @F
-
-    mov al , [ds:si]
-    mov [currentPath] , al
-
-    mov al ,  byte [ds:si]
-    mov bl , 2
-    mul bl
-    add ax , partitions
-
-    mov si , ax
-
-    mov al , byte [ds:si]
-    mov [current_partition_disk] , al
-
+    mov cx , 0
+    call iso_validate
+    jne @f
+    mov cx , BPB_TYPE_ISO
 @@:
-
 .end:
-    pop si ax bx
+    pop eax
+    ret
+
+;in
+;dl - diskIndex
+;eax - sector
+;out
+;equal if iso
+iso_validate:
+    push es bp bx cx dx si di
+    mov bp , cs
+    mov es , bp
+
+    mov bx , KRNL_DISK_IO_BUFFER
+    mov cx , 1
+
+    call read_sectors
+
+    mov dx , ISO_Str
+    call strlen
+
+    mov si , ISO_Str
+    mov di , KRNL_DISK_IO_BUFFER
+    call memcmp
+
+    rep cmpsb
+    
+    pop di si dx cx bx bp es
 
     ret
+
+;eax - firstSector
+;dl - disk ID
+;dh - partitionIndex, 255 if mbr not present
+;bl - flags
+;bh - label automaticly select if zero
+;out
+;carry if error
+attach_partition:
+
+    call validate_fs
+    
+    mov di , partitionTableSize
+    add di , partitionTableAddr
+    mov si , partitionTableAddr
+    mov bp , partitionTableSeg
+    mov es , bp
+
+    push ax 
+    
+    @@:
+        mov al , [es:si]
+        test al , al
+        jz @f
+
+        add si , partitiontableElementSize
+        cmp si , di
+        jnge @b
+    @@:
+    pop ax
+
+    mov byte [es:si] , PARTITON_FLAG_MOUTED
+    add si , 1
+    mov [es:si] , eax
+    add si , 4
+    mov [es:si] , cx
+    add si , 2
+    mov [es:si] , dl
+    add si , 1
+    mov [es:si] , dh
+    add si , 1
+    mov [es:si] , dh
+    ret
+
+; ---- partition table ----
+; db flags
+; dq firtsSector
+; dw fsType
+; db ID
+; db partitionIndex
+; db label
