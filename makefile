@@ -11,7 +11,7 @@ all-img: Bootman.img
 all-clean: clean
 
 
-Bootman.iso: boot-bios boot-cd bootman.SYS
+Bootman.iso: boot-bios boot-cd bootman.SYS utils
 	rm -rf iso_root
 	mkdir -p iso_root
 	mkdir -p iso_root/system16
@@ -28,7 +28,7 @@ Bootman.iso: boot-bios boot-cd bootman.SYS
 		
 	rm -rf iso_root
 
-Bootman.img: boot-bios boot-cd
+Bootman.img: boot-bios boot-cd utils
 	rm -f bootman.img
 	dd if=/dev/zero bs=1M count=0 seek=64 of=bootman.img
 	parted -s bootman.img mklabel gpt
@@ -53,6 +53,9 @@ boot-cd:
 	fasm boot/cdboot.asm
 bootman.SYS:
 	fasm Bootman/bootman.asm
+utils:
+	fasm Explorer/explorer.asm
+	cp Explorer/explorer.exe osRoot/system16/
 
 clean:
 	rm -rf Bootman.iso Bootman.img

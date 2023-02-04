@@ -5,6 +5,8 @@ UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 PartitionLabels db "ABCDEFGHIJKLMNOPQRSTUVWXYZ$"
 lastLableID dw 0
 
+rootDirStr db '\$'
+
 current_sector dq 0
 current_partition_type dw 0
 current_partition_disk db 0
@@ -21,6 +23,8 @@ partitionTableSeg dw 0
 ; db label
 
 partitiontableElementSize equ 10
+
+currentPartitionFsType dw 0x00
 
 align 8
 dapack:
@@ -128,10 +132,13 @@ disks_init:
     mov eax , 16
     mov dl , [MainDiskID] 
     call validate_fs
-    jc @f
+    jc .end
     mov bh , 'A'
     call attach_partition
-@@:
+
+    mov dx , 0
+    call setCurrentParttion
+.end:
     ret
 
 
@@ -222,10 +229,89 @@ attach_partition:
 .end:
     ret
 
-; ---- partition table ----
-; db flags
-; dq firtsSector
-; dw fsType
-; db ID
-; db partitionIndex
-; db label
+
+;in
+;DX - partition index
+;out
+;carry if error
+;eax - error code
+setCurrentParttion:
+    push si es ax bx
+
+    mov di , [partitionTableAddr]
+    mov bp , [partitionTableSeg]
+    mov es , bp
+
+    mov ax , [partitiontableElementSize]
+    mov bx , dx
+    mul bx
+
+    add di , ax
+    add di , 1+4
+    mov bx , word [es:di] 
+    mov [currentPartitionFsType] , bx
+
+    mov si , currentPath
+
+    add di , 4
+    mov al , byte [es:di]
+    mov [ds:si] , al
+    inc si
+    mov [ds:si] , byte ':'
+    inc si
+    mov [ds:si] ,byte  '\'
+    inc si
+    mov [ds:si] ,byte  '$'
+    
+    mov dx , rootDirStr
+    call chdir
+    pop bx ax es si
+    ret
+
+
+
+;in
+;dx - dir name
+;out
+;carry
+;ax - error code
+setdir:
+    push ax 
+
+    mov ax , [current_partition_type]
+    cmp ax , BPB_TYPE_FAT12
+    jne @f
+
+    jmp .end
+
+@@:
+    mov ax , [current_partition_type]
+    cmp ax , BPB_TYPE_FAT16
+    jne @f
+
+    jmp .end
+@@:
+    mov ax , [current_partition_type]
+    cmp ax , BPB_TYPE_FAT32
+    jne @f
+
+    jmp .end
+@@:
+    mov ax , [current_partition_type]
+    cmp ax , BPB_TYPE_ISO
+    jne @f
+
+    call iso_chdir
+    jmp .end
+@@:
+.end:
+    pop ax
+    ret
+;dx - path
+chdir:
+    ret
+    
+;out
+;dx - file name ptr
+nextfile:
+    ret

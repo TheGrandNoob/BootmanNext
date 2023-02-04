@@ -1,18 +1,48 @@
 
-ShutdownCmd_str db "shutdown",0x00
+ShutdownCmd_str db "shutdown$"
+lsCmdStr db "ls$"
+cdCmdStr db "cd$"
 UnkownCmdStr db "Unkown cmd: $"
+
+isNotAdminChar db ">$"
+
+PARSE_CMD_FINISH equ 1
 
 parse_cmd:
 
     mov eax , 0
 
+    mov dx , ShutdownCmd_str
+    call strlen
     mov si , cmdLine
 	mov di , ShutdownCmd_str
 	rep cmpsb
     jne @F
 
-    mov eax , 1
-    jmp .end
+        mov eax , 1
+        jmp .end
+    @@:
+
+    mov dx , lsCmdStr
+    call strlen
+    mov si , cmdLine
+	mov di , lsCmdStr
+	rep cmpsb
+    jne @F
+
+        call lsCmd
+        jmp .end
+    @@:
+
+    mov dx , cdCmdStr
+    call strlen
+    mov si , cmdLine
+	mov di , cdCmdStr
+	rep cmpsb
+    jne @F
+
+        call cdCmd
+        jmp .end
     @@:
     
     mov ah , 0x9
@@ -78,19 +108,36 @@ shell_readkb:
 .end:
     ret
 
+printCurrentStatus:
+    push dx ax
 
+    mov dx , currentPath
+    mov ah , 0x9
+    int 21h
+
+    mov dx , isNotAdminChar
+    int 21h
+
+    pop ax dx
+    ret
+
+lsCmd:
+    ret
+cdCmd:
+    ret
 shell_task:
 
     mov bp , ds
     mov es , bp
 
+    call printCurrentStatus
     @@:
 
     call shell_readkb
-    cmp eax , 1
+    cmp eax , PARSE_CMD_FINISH
     jne .noCmd
     call parse_cmd
-
+    call printCurrentStatus
 .noCmd:
 
     cmp eax , 1

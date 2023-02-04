@@ -9,7 +9,6 @@ strlen:
     mov dx , 0
 
 @@:
-
     mov al , [ds:si]
 
     cmp al , '$'
