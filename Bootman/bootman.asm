@@ -14,9 +14,13 @@ main:
 
         call int21h_init
 	call memory_init  
+        call kernel_objects_init
               
         call disks_init
         jc .diskError
+
+        call CreateFile
+        call ReadFile
 
         call shell_task
         call poweroff
@@ -57,7 +61,8 @@ include 'disks.inc'
 include 'shell.inc'
 include 'memory.inc'
 include 'string.inc'
-
+include 'krnlobject.inc'
+include 'errorcodes.inc'
 align 16
 DISK_RW_BUFFER:
 rb 4096

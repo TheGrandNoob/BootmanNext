@@ -8,6 +8,7 @@ isNotAdminChar db ">$"
 
 PARSE_CMD_FINISH equ 1
 
+align 16
 parse_cmd:
 
     mov eax , 0

@@ -16,7 +16,7 @@ partitionTableSize dw 0
 partitionTableSeg dw 0
 ; ---- partition table ----
 ; db flags
-; dq firtsSector
+; dd firtsSector
 ; dw fsType
 ; db ID
 ; db partitionIndex
@@ -138,6 +138,13 @@ disks_init:
 
     mov dx , 0
     call setCurrentParttion
+
+    mov ax , KERNEL_OBJECT_TYPE_FILE
+    mov bx , 0x200
+    mov cx , disks_kernelObjectExecutor
+    call AddKernelObjectExecuter
+
+
 .end:
     ret
 
@@ -263,55 +270,41 @@ setCurrentParttion:
     inc si
     mov [ds:si] ,byte  '$'
     
-    mov dx , rootDirStr
-    call chdir
     pop bx ax es si
     ret
 
 
 
 ;in
-;dx - dir name
+;ax - handle
+;bx - buffer addr
+;cx - buffer seg
 ;out
 ;carry
 ;ax - error code
-setdir:
-    push ax 
+ReadFile:
 
-    mov ax , [current_partition_type]
-    cmp ax , BPB_TYPE_FAT12
-    jne @f
-
-    jmp .end
-
-@@:
-    mov ax , [current_partition_type]
-    cmp ax , BPB_TYPE_FAT16
-    jne @f
-
-    jmp .end
-@@:
-    mov ax , [current_partition_type]
-    cmp ax , BPB_TYPE_FAT32
-    jne @f
-
-    jmp .end
-@@:
-    mov ax , [current_partition_type]
-    cmp ax , BPB_TYPE_ISO
-    jne @f
-
-    call iso_chdir
-    jmp .end
-@@:
-.end:
-    pop ax
+    call KernelObjectExecute
     ret
+
+;in
 ;dx - path
-chdir:
-    ret
-    
+;bx - flags
 ;out
-;dx - file name ptr
-nextfile:
+;carry
+;ax - error code
+CreateFile:
+
+    mov ax , KERNEL_OBJECT_TYPE_FILE
+    call AddKernelObject
+
     ret
+
+
+KOBjExecutorStr db "called Create file",0x0A,0x0D,'$'
+disks_kernelObjectExecutor:
+
+    mov dx , KOBjExecutorStr
+    mov ah , 0x9
+    int 21h
+    retf
