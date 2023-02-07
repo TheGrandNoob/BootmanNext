@@ -1,5 +1,6 @@
 
 int21h_init:
+    pusha 
     mov si , 0x21*4
     mov bp , 0
     mov es , bp
@@ -8,6 +9,7 @@ int21h_init:
     mov [es:si] , word int21h
     add si , 2
     mov [es:si] , cs
+    popa
     ret
 
 

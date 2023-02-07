@@ -1,5 +1,7 @@
+align 16
 include "iso9660.inc"
 
+EXECUTOR_CMD_TYPE_READ_FILE equ 0x2
 UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 
 PartitionLabels db "ABCDEFGHIJKLMNOPQRSTUVWXYZ$"
@@ -24,9 +26,12 @@ partitionTableSeg dw 0
 
 partitiontableElementSize equ 10
 
-currentPartitionFsType dw 0x00
+;CreateFile structure
+;dw - PathStrLenght
+;dw - Flags
 
-align 8
+
+currentPartitionFsType dw 0x00
 dapack:
     	dapack_size:    db 0x10
     	dapack_null:    db 0x00
@@ -119,6 +124,8 @@ disks_init_varables:
 
 disks_init:
 
+    push es bx cx dx  
+
     mov ax , 40
     call malloc
 
@@ -146,6 +153,8 @@ disks_init:
 
 
 .end:
+    pop dx cx bx es
+
     ret
 
 
@@ -284,6 +293,7 @@ setCurrentParttion:
 ;ax - error code
 ReadFile:
 
+    mov bx , EXECUTOR_CMD_TYPE_READ_FILE
     call KernelObjectExecute
     ret
 
@@ -295,13 +305,16 @@ ReadFile:
 ;ax - error code
 CreateFile:
 
+    mov bp , sp
+    mov ax , [ss:bp]
+
     mov ax , KERNEL_OBJECT_TYPE_FILE
     call AddKernelObject
 
     ret
 
 
-KOBjExecutorStr db "called Create file",0x0A,0x0D,'$'
+KOBjExecutorStr db "called disks executor",0x0A,0x0D,'$'
 disks_kernelObjectExecutor:
 
     mov dx , KOBjExecutorStr

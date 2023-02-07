@@ -8,6 +8,20 @@ jmp main
 
 diskSubSysErrorStr db "Disk subsystem error$"
 
+ConfigPathStr db "/System16/config.cfg$"
+AutorunPathStr db "/System16/config.cfg$"
+
+include 'commondata.inc'
+include 'int21h.inc'
+include 'disks.inc'
+include 'shell.inc'
+include 'process.inc'
+include 'memory.inc'
+include 'string.inc'
+include 'krnlobject.inc'
+include 'errorcodes.inc'
+include 'proc16.inc'
+
 main:
 
         call disks_init_varables
@@ -19,8 +33,16 @@ main:
         call disks_init
         jc .diskError
 
-        call CreateFile
+
+        call init_process_manager
+
+        
+        
+        ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
+
         call ReadFile
+
+        call FreeHandle
 
         call shell_task
         call poweroff
@@ -54,15 +76,6 @@ poweroff:
         int     15h
         hlt
         ret
-
-include 'commondata.inc'
-include 'int21h.inc'
-include 'disks.inc'
-include 'shell.inc'
-include 'memory.inc'
-include 'string.inc'
-include 'krnlobject.inc'
-include 'errorcodes.inc'
 align 16
 DISK_RW_BUFFER:
 rb 4096

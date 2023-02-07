@@ -1,4 +1,4 @@
-
+align 16
 ;in
 ;dx - string
 ;out

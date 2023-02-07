@@ -1,3 +1,4 @@
+align 16
 SEGMENT_SIZE equ 0x1000
 
 
@@ -13,6 +14,7 @@ SEGMENT_ALLOC_TABLE_HI_ADDR dw 0
 
 memory_init:
   	
+	pusha
 	in al, 0x92
     or al, 2
 	out 0x92, al
@@ -28,6 +30,7 @@ memory_init:
 	mov si , bx 
 	inc si
 
+	xor dx , dx
 	mov bx , 8*4
 	mov ax , 0
 	mov dx , 1
@@ -67,6 +70,7 @@ memory_init:
 	mov bx , 0
 	call memory_set_segment_status_used
 
+	popa
 	ret
 
 ;in
@@ -97,7 +101,7 @@ malloc:
 	mov bx , [es:si]
 	mov cx , 0
 @@:
-
+	xor dx , dx
 	div bx
 
 	cmp dx , 0

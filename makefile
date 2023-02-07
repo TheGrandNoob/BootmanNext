@@ -58,7 +58,9 @@ utils:
 	cp Explorer/explorer.exe osRoot/system16/
 
 clean:
+
 	rm -rf Bootman.iso Bootman.img
-	rm -rf *.bin
-	rm -rf iso_root
-	rm -rf *.SYS
+	find . -name "*.bin" -type f -delete
+	find . -name "*.SYS" -type f -delete
+	find . -name "*.exe" -type f -delete
+

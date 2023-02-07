@@ -1,3 +1,4 @@
+align 16
 iso_current_fsbeginSector dd 0
 iso_currentDirSize dd 0
 iso_currentDirSector dd 0

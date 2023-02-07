@@ -1,4 +1,4 @@
-
+align 16
 KERNEL_OBJECT_MAX_NUM equ 1024
 KERNEL_OBJECT_TABLE_EL_SIZE equ 6
 ;KERNEL OBJECT
@@ -11,22 +11,27 @@ NUM_OF_EXECUTORS equ 32
 ;KERNEL_OBJECT_EXECUTER
 ;dw - seg
 ;dw - addr
-
-KernelObjectExecuters dd NUM_OF_EXECUTORS
 kernelObjectTableSeg dw 0x00
 kernelObjectTableAddr dw 0x00
+KernelObjectExecuters rd NUM_OF_EXECUTORS
 
 kernel_objects_init:
+
+    push eax 
+    push es cx dx di
+
     mov eax , KERNEL_OBJECT_MAX_NUM *KERNEL_OBJECT_TABLE_EL_SIZE
     call malloc
     mov [kernelObjectTableAddr] , ax
     mov [kernelObjectTableSeg] , es
 
 
+    mov di , ax
     mov al , 0
     mov cx , KERNEL_OBJECT_MAX_NUM *KERNEL_OBJECT_TABLE_EL_SIZE
-    mov di , ax
     call memset 
+    pop di dx cx es
+    pop eax
     ret
 
 FreeKernelObject:
@@ -42,6 +47,7 @@ FreeKernelObject:
 
 AddKernelObject:
     
+    push es bp bx cx dx si
     mov si , [kernelObjectTableAddr]
     mov bp , [kernelObjectTableSeg]
     mov es , bp
@@ -64,6 +70,7 @@ AddKernelObject:
 
     mov ax , dx
 
+    pop si dx cx bx bp es
     ret
 
 
@@ -81,7 +88,7 @@ AddKernelObjectExecuter:
     jge .error
 
     push bx
-    mov bx , 2
+    mov bx , 4
     mul bx
     mov si , ax
     pop bx
@@ -108,8 +115,9 @@ currentExecutorSeg dw 0
 ;ax - handle
 KernelObjectExecute:    
     
-    push bx si bp es
+    push ax bx dx si bp es
 
+    xor dx , dx
     mov bx , KERNEL_OBJECT_TABLE_EL_SIZE
     mul bx
 
@@ -119,9 +127,9 @@ KernelObjectExecute:
     mov es , bp
 
     mov di , [es:si]
-    mov ax , di
 
-    mov bx , 2
+    mov ax , di
+    mov bx , 4
     mul bx
 
     mov di , ax
@@ -133,8 +141,18 @@ KernelObjectExecute:
     mov ax , [ds:di]
     mov [currentExecutorAddr] , ax
 
-    pop es bp si bx
-
     call far dword [currentExecutorAddr]
 
+    pop es bp si dx bx ax
+
+    ret
+
+;in
+;ax - handle
+;out
+;carry
+;ax - error code
+FreeHandle:
+    mov bx , 0
+    call KernelObjectExecute
     ret
