@@ -15,6 +15,8 @@ kernelObjectTableSeg dw 0x00
 kernelObjectTableAddr dw 0x00
 KernelObjectExecuters rd NUM_OF_EXECUTORS
 
+KERNEL_OBJECT_EXEC_COMMAND_FREE equ 0x1
+
 kernel_objects_init:
 
     push eax 
@@ -32,9 +34,6 @@ kernel_objects_init:
     call memset 
     pop di dx cx es
     pop eax
-    ret
-
-FreeKernelObject:
     ret
 
 ;in
@@ -113,9 +112,11 @@ currentExecutorSeg dw 0
 
 ;in
 ;ax - handle
+;bx - ExecutorCmd
 KernelObjectExecute:    
     
-    push ax bx dx si bp es
+    pusha
+    pusha 
 
     xor dx , dx
     mov bx , KERNEL_OBJECT_TABLE_EL_SIZE
@@ -141,9 +142,10 @@ KernelObjectExecute:
     mov ax , [ds:di]
     mov [currentExecutorAddr] , ax
 
+    popa
     call far dword [currentExecutorAddr]
+    popa
 
-    pop es bp si dx bx ax
 
     ret
 
@@ -153,6 +155,10 @@ KernelObjectExecute:
 ;carry
 ;ax - error code
 FreeHandle:
-    mov bx , 0
+    mov bp , sp
+    add bp , 2
+    mov eax , [ss:bp]
+
+    mov bx , KERNEL_OBJECT_EXEC_COMMAND_FREE
     call KernelObjectExecute
     ret

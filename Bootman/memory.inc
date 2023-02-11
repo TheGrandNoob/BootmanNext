@@ -303,7 +303,7 @@ memory_allocate_block:
 	mov cx , ax
 	
 	xor dx , dx
-	mov bx , 7
+	mov bx , 8
 	div bx
 
 	mov di , dx
@@ -382,7 +382,7 @@ memory_search_free_block:
 	mov cx , ax
 	
 	xor dx , dx
-	mov bx , 7
+	mov bx , 8
 	div bx
 
 	mov di , dx
@@ -469,7 +469,7 @@ memory_set_segment_status_free:
 	mov bx , SEGMENT_SIZE
 	div bx
 
-	mov bx , 7
+	mov bx , 8
 	div bx
 
 	add si , ax
@@ -505,7 +505,7 @@ memory_set_segment_status_used:
 	mov bx , SEGMENT_SIZE
 	div bx
 
-	mov bx , 7
+	mov bx , 8
 	div bx
 
 	add si , ax
@@ -542,7 +542,7 @@ memory_search_free_seg:
 	mov cx , SEGMENT_SIZE
 	div cx
 	mov bx , ax
-	mov cx , 0x7
+	mov cx , 8
 	div cx
 
 	add si , ax

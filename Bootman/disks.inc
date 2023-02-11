@@ -1,7 +1,5 @@
 align 16
-include "iso9660.inc"
 
-EXECUTOR_CMD_TYPE_READ_FILE equ 0x2
 UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 
 PartitionLabels db "ABCDEFGHIJKLMNOPQRSTUVWXYZ$"
@@ -9,6 +7,18 @@ lastLableID dw 0
 
 rootDirStr db '\$'
 
+struc FsExecutor
+{
+    .addr dw 0
+}
+
+lastFsExecutorId dw 0x00
+
+MaxNumOfFsExecutors equ 64
+
+FS_ExecutorTableBegin:
+FsExecutorTable: rept MaxNumOfFsExecutors n:0 {FsExecutor_#n#_ FsExecutor}
+FS_ExecutorTableEnd:
 current_sector dq 0
 current_partition_type dw 0
 current_partition_disk db 0
@@ -58,61 +68,28 @@ read_sectors:
     	popa
     	ret
 
-
 ;IN
 ;DL - disk id
 ;EAX - sector
-
 ;OUT ax - bpbType
-
 disks_getbpbType:
 
-    push cx bx bp si di
+    mov dx , 0 
+    mov si , [lastFsExecutorId]
 
-    mov cx  , 1
-    mov bx , DISK_RW_BUFFER
-    mov bp , ds 
-    mov es , bp
+    @@:
 
-    call read_sectors
+    mov ax , dx
+    mov bx , FS_EXECUTOR_CMD_VALIDATE
+    call fs_executor_exec
 
+    cmp ax , 0
+    jg .IsValidated
 
-    mov si , 0x036+DISK_RW_BUFFER
-	mov di , FAT12_Str
-	rep cmpsb
-    jne @F
-
-    mov ax , BPB_TYPE_FAT12
-    jmp .end
-@@:
-
-	mov di , FAT16_Str
-	rep cmpsb
-    jne @F
-
-    mov ax , BPB_TYPE_FAT16
-    jmp .end
-@@:
-
-	mov di , FAT32_Str
-	rep cmpsb
-    jne @F
-
-    mov ax , BPB_TYPE_FAT32
-    jmp .end
-@@:
-    mov si , 0x1
-	mov di , ISO_Str
-	rep cmpsb
-    jne @F
-
-    mov ax , BPB_TYPE_ISO
-    jmp .end
-@@:
-.end:
-
-    pop di si bp bx cx
-
+    inc dx
+    cmp dx , si
+    jl @b
+.IsValidated:
     ret
 
 disks_init_varables:
@@ -136,45 +113,16 @@ disks_init:
     mov [partitionTableAddr] , ax
     mov [partitionTableSeg] , es
 
-    mov eax , 16
-    mov dl , [MainDiskID] 
-    call validate_fs
-    jc .end
-    mov bh , 'A'
-    call attach_partition
-
-    mov dx , 0
-    call setCurrentParttion
-
     mov ax , KERNEL_OBJECT_TYPE_FILE
     mov bx , 0x200
     mov cx , disks_kernelObjectExecutor
     call AddKernelObjectExecuter
-
 
 .end:
     pop dx cx bx es
 
     ret
 
-
-;in
-;eax - partition sector
-;dl - disk id
-;out
-;cx - partion fstype
-validate_fs:
-
-    push eax
-
-    mov cx , 0
-    call iso_validate
-    jne @f
-    mov cx , BPB_TYPE_ISO
-@@:
-.end:
-    pop eax
-    ret
 
 ;out
 ;al - label
@@ -189,16 +137,15 @@ disks_getLabel:
     pop si
     ret
 
-;eax - firstSector
-;dl - disk ID
-;dh - partitionIndex, 255 if mbr not present
-;bl - flags
-;bh - label automaticly select if zero
+;arg1 - firstSector
+;arg2 - disk ID
+;arg3 - disk label
 ;out
 ;carry if error
 attach_partition:
 
-    call validate_fs
+    mov bp , sp
+    ccall validate_fs , [ss:bp+10] ,[ss:bp+6] , [ss:bp+2]
     
     cmp cx , 0
     je .end
@@ -244,65 +191,11 @@ attach_partition:
 
 .end:
     ret
-
-
 ;in
-;DX - partition index
+;arg1 - path
+;arg2 - flags
 ;out
-;carry if error
 ;eax - error code
-setCurrentParttion:
-    push si es ax bx
-
-    mov di , [partitionTableAddr]
-    mov bp , [partitionTableSeg]
-    mov es , bp
-
-    mov ax , [partitiontableElementSize]
-    mov bx , dx
-    mul bx
-
-    add di , ax
-    add di , 1+4
-    mov bx , word [es:di] 
-    mov [currentPartitionFsType] , bx
-
-    mov si , currentPath
-
-    add di , 4
-    mov al , byte [es:di]
-    mov [ds:si] , al
-    inc si
-    mov [ds:si] , byte ':'
-    inc si
-    mov [ds:si] ,byte  '\'
-    inc si
-    mov [ds:si] ,byte  '$'
-    
-    pop bx ax es si
-    ret
-
-
-
-;in
-;ax - handle
-;bx - buffer addr
-;cx - buffer seg
-;out
-;carry
-;ax - error code
-ReadFile:
-
-    mov bx , EXECUTOR_CMD_TYPE_READ_FILE
-    call KernelObjectExecute
-    ret
-
-;in
-;dx - path
-;bx - flags
-;out
-;carry
-;ax - error code
 CreateFile:
 
     mov bp , sp
@@ -313,11 +206,105 @@ CreateFile:
 
     ret
 
+ReadFileStr db "ReadFile",0x0A,0x0D,'$'
 
-KOBjExecutorStr db "called disks executor",0x0A,0x0D,'$'
+FreeFileHandleStr db "FreeFileHandle",0x0A,0x0D,'$'
 disks_kernelObjectExecutor:
 
-    mov dx , KOBjExecutorStr
+    cmp bx , 0x1
+    jne @f
+
+    mov dx , FreeFileHandleStr
     mov ah , 0x9
-    int 21h
+    int 21h   
+@@:
+
+    cmp bx , EXECUTOR_CMD_TYPE_READ_FILE
+    jne @f
+
+    mov dx , ReadFileStr
+    mov ah , 0x9
+    int 21h   
+@@:
+
     retf
+
+;in
+;arg1 - fs start sector
+;arg2 - disk logical id
+;out
+;bool eax
+validate_fs:
+
+    mov bp , sp
+
+    mov esi , 0
+    mov cx , MaxNumOfFsExecutors
+
+    @@:
+
+    ccall fs_executor_exec, esi , FS_EXECUTOR_CMD_VALIDATE,\
+    [ss:bp+10] ,[ss:bp+6]
+
+    inc si 
+    cmp si , cx
+    jl @b
+.Found:
+.NotFound:
+    ret
+
+;in
+;arg1 - addr
+;out
+;ax - exec id
+attach_fs_executor:
+
+    mov bp , sp
+    
+    push si es ax dx cx
+
+    xor dx , dx
+
+    mov ax , [lastFsExecutorId]
+    inc ax 
+    mov [lastFsExecutorId] , ax
+    dec ax 
+    
+    mov bx , PTR_SIZE
+    mul bx
+    add ax , FS_ExecutorTableBegin
+    mov si , ax
+
+    mov ax , [ss:bp+2]
+    mov [ds:si] , ax
+
+    mov esi , 0
+    mov si , [lastFsExecutorId]
+    dec si
+    ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_INIT
+
+    pop cx dx ax es si
+
+    ret
+
+;in
+;arg1 - execuotor id 
+;arg2 - cmd
+fs_executor_exec:
+
+    mov bp , sp
+
+    push ax bx cx dx si 
+
+    mov ax , [ss:bp+2]
+    mov cx , PTR_SIZE
+    mul cx
+    add ax , FS_ExecutorTableBegin
+    mov si , ax
+    mov ax , [ds:si]
+
+    ccall ax , [ss:bp+6]
+
+    pop si dx cx bx ax 
+
+    ret

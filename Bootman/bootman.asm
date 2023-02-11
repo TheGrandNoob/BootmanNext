@@ -1,3 +1,5 @@
+org 0x2000
+
 use16
 align 16
 FORMAT BINARY AS 'SYS'
@@ -11,17 +13,19 @@ diskSubSysErrorStr db "Disk subsystem error$"
 ConfigPathStr db "/System16/config.cfg$"
 AutorunPathStr db "/System16/config.cfg$"
 
-include 'commondata.inc'
-include 'int21h.inc'
-include 'disks.inc'
-include 'shell.inc'
-include 'process.inc'
-include 'memory.inc'
-include 'string.inc'
-include 'krnlobject.inc'
-include 'errorcodes.inc'
-include 'proc16.inc'
-
+        include 'proc16.inc'
+        include 'commondata.inc'
+        include 'int21h.inc'
+        include 'disks.inc'
+        include 'shell.inc'
+        include 'process.inc'
+        include 'memory.inc'
+        include 'string.inc'
+        include 'krnlobject.inc'
+        include 'errorcodes.inc'
+        include "iso9660.inc"
+        include "FatFs.inc"
+        include "NullFs.inc"
 main:
 
         call disks_init_varables
@@ -36,13 +40,20 @@ main:
 
         call init_process_manager
 
+        ccall attach_fs_executor ,NullFs_executor 
+        ccall attach_fs_executor ,isofs_executor
+        ccall attach_fs_executor ,fatfs_executor
+
+        mov ax , 0
+
+        ccall attach_partition, 32 , edx , 0
+
+        jmp $
         
         
-        ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
-
-        call ReadFile
-
-        call FreeHandle
+        ;ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
+        ;ccall ReadFile , eax , cs ,dword DISK_RW_BUFFER , dword 4096
+        ;ccall FreeHandle , eax
 
         call shell_task
         call poweroff

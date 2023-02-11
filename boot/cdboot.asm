@@ -137,14 +137,14 @@ start:
 
 	mov dl ,[bootDiskId]
 	cli
-    mov bp , 0x200
+    mov bp , 0
     mov es , bp
     mov ds , bp
     mov ss , bp
     mov sp , 0xFFFF
     sti
 
-    jmp 0x200:0
+    jmp 0:0x2000
 
 search_dir:
 
