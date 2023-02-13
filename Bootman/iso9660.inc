@@ -1,6 +1,8 @@
 
+IsoFs_indifier db "CD001" , 0x00
 
-IsoFs_indifier db "CD001$"
+IsoFsPartitionsTable rd 4
+IsoFsLastPartitionOffset dw 0
 
 ;arg1 - function
 isofs_executor:
@@ -36,9 +38,9 @@ isofs_executor:
 
 
     ret
-
-isoFsInitStr db "IsoFsInit",0x0A,0x0D,'$'
 isofs_init:
+
+    mov [IsoFsLastPartitionOffset] , IsoFsPartitionsTable 
 
     ret
 
@@ -75,6 +77,12 @@ isofs_cmd_validate:
 
     jne @f
     mov eax , 1
+
+    mov [LastTransactionDataSeg] , ds
+    mov si , word [IsoFsLastPartitionOffset]
+    add si ,4
+    mov [IsoFsLastPartitionOffset] , si
+    sub si , 4 
 @@:
     pop es
     ret
@@ -84,5 +92,37 @@ isofs_cmd_validate:
 ;arg3 - data seg
 ;arg4 - data addr
 isofs_cmd_attach:
+    mov eax , 0
+
+    mov bp , sp
+
+    push es
+
+    mov ax , ds
+    mov es , ax
+
+    mov eax , [bp+2]
+    mov cx , 2
+    mov bx , ISO_FsDiskRwBuffer
+    mov edx , [bp+6]
+    
+    call read_sectors    
+
+    mov si , IsoFs_indifier
+    mov di , ISO_FsDiskRwBuffer+1
+    mov cx , 5
+    call memcmp
+
+    jne @f
+    mov eax , 1
+@@:
+    pop es
+
+    mov si , word [IsoFsLastPartitionOffset]
+    mov eax , [bp+2]
+    mov [IsoFsLastPartitionOffset] , ax
+    add si , 4
+    mov [IsoFsLastPartitionOffset] , si
+
     ret
 ISO_FsDiskRwBuffer rb 2048*2

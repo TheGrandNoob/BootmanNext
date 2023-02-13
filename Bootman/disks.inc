@@ -160,12 +160,10 @@ attach_partition:
 
     mov byte [es:si + Partition.flags] , PARTITON_FLAG_MOUTED
     mov word [es:si + Partition.fsType] , ax
-    ;mov byte [es:si + Partition.label] , PARTITON_FLAG_MOUTED
-    ;mov word [es:si + Partition.fsInfoAddr] , [lastTransactionAddr]
-
-
-    .fsInfoAddr dw ?
-    .fsInfoSeg  dw ?
+    mov ax , [LastTransactionDataAddr]
+    mov word [es:si + Partition.fsInfoAddr] , ax
+    mov ax , [LastTransactionDataSeg]
+    mov word [es:si + Partition.fsInfoSeg] , ax
     
     cmp bh , [ss:bp+10]
     jne @f
