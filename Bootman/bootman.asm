@@ -46,7 +46,7 @@ main:
 
         mov ax , 0
 
-        ccall attach_partition, 32 , edx , 0
+        ;ccall attach_partition, 32 , edx , 0
 
         jmp $
         

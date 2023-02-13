@@ -4,44 +4,41 @@ UnsoportedBootPartitionStr db "UnsoportedBootPartition$"
 
 PartitionLabels db "ABCDEFGHIJKLMNOPQRSTUVWXYZ$"
 lastLableID dw 0
-
-rootDirStr db '\$'
-
 struc FsExecutor
 {
     .addr dw 0
 }
 
+LastTransactionDataAddr dw 0x0
+LastTransactionDataSeg dw 0x0
+
+struc Partition_t
+{
+    .flags      db ?
+    .fsType     dw ?
+    .label      db ?
+
+    .fsInfoAddr dw ?
+    .fsInfoSeg  dw ?
+}
+virtual at 0
+  Partition Partition_t
+end virtual
 lastFsExecutorId dw 0x00
+LastPartitionID dw 0x00
 
 MaxNumOfFsExecutors equ 64
+MaxNumOfPartitions equ 32
 
-FS_ExecutorTableBegin:
+FsExecutorTableBegin:
 FsExecutorTable: rept MaxNumOfFsExecutors n:0 {FsExecutor_#n#_ FsExecutor}
-FS_ExecutorTableEnd:
-current_sector dq 0
-current_partition_type dw 0
-current_partition_disk db 0
+FsExecutorTableEnd:
 
-partitionTableAddr dw 0
-partitionTableSize dw 0
-partitionTableSeg dw 0
-; ---- partition table ----
-; db flags
-; dd firtsSector
-; dw fsType
-; db ID
-; db partitionIndex
-; db label
-
-partitiontableElementSize equ 10
-
-;CreateFile structure
-;dw - PathStrLenght
-;dw - Flags
+FsPartitionTableBegin:
+FsPartitionTable: rept MaxNumOfPartitions n:0 {Partition_#n#_ Partition_t}
+FsPartitionTableEnd:
 
 
-currentPartitionFsType dw 0x00
 dapack:
     	dapack_size:    db 0x10
     	dapack_null:    db 0x00
@@ -83,8 +80,8 @@ disks_getbpbType:
     mov bx , FS_EXECUTOR_CMD_VALIDATE
     call fs_executor_exec
 
-    cmp ax , 0
-    jg .IsValidated
+    cmp eax , 0
+    jne .IsValidated
 
     inc dx
     cmp dx , si
@@ -106,13 +103,6 @@ disks_init:
     mov ax , 40
     call malloc
 
-    mov ax , ( partitiontableElementSize * 16)
-    mov [partitionTableSize] , ax
-    call malloc 
-
-    mov [partitionTableAddr] , ax
-    mov [partitionTableSeg] , es
-
     mov ax , KERNEL_OBJECT_TYPE_FILE
     mov bx , 0x200
     mov cx , disks_kernelObjectExecutor
@@ -130,9 +120,12 @@ disks_getLabel:
     push si
 
     mov si ,  [lastLableID]
-    mov al , [ds:si]
     inc si
     mov [lastLableID] , si
+    dec si
+
+    add si , PartitionLabels
+    mov al , [ds:si]
 
     pop si
     ret
@@ -145,60 +138,64 @@ disks_getLabel:
 attach_partition:
 
     mov bp , sp
-    ccall validate_fs , [ss:bp+10] ,[ss:bp+6] , [ss:bp+2]
+    ccall validate_fs ,[ss:bp+6] , [ss:bp+2]
     
-    cmp cx , 0
+    cmp eax , 0
     je .end
 
-    mov di , [partitionTableSize]
-    add di , [partitionTableAddr]
-    mov si , [partitionTableAddr]
-    mov bp , [partitionTableSeg]
-    mov es , bp
 
-    push ax 
+    push ax bx
+    mov si , [FsPartitionTable]
     
     @@:
         mov al , [es:si]
         test al , al
         jz @f
 
-        add si , partitiontableElementSize
+        add si , (FsPartitionTableBegin-FsExecutorTableEnd)/MaxNumOfPartitions
         cmp si , di
         jnge @b
     @@:
-    pop ax
+    pop bx ax
+
+    mov byte [es:si + Partition.flags] , PARTITON_FLAG_MOUTED
+    mov word [es:si + Partition.fsType] , ax
+    ;mov byte [es:si + Partition.label] , PARTITON_FLAG_MOUTED
+    ;mov word [es:si + Partition.fsInfoAddr] , [lastTransactionAddr]
 
 
-
-    mov byte [es:si] , PARTITON_FLAG_MOUTED
-    add si , 1
-    mov [es:si] , eax
-    add si , 4
-    mov [es:si] , cx
-    add si , 2
-    mov [es:si] , dl
-    add si , 1
-    mov [es:si] , dh
-
-    add si , 1
-    cmp bx , 0
+    .fsInfoAddr dw ?
+    .fsInfoSeg  dw ?
+    
+    cmp bh , [ss:bp+10]
     jne @f
     call disks_getLabel    
     mov bh , al
 @@:
     mov [es:si] , bh
 
+    mov [currentPath] , bh
+    mov [currentPath+1] , ':'
+    mov [currentPath+2] , '\'
+
 .end:
     ret
 ;in
 ;arg1 - path
+;arg1 - pathSeg
 ;arg2 - flags
 ;out
 ;eax - error code
 CreateFile:
 
     mov bp , sp
+
+
+    mov esi , 0
+
+    ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_CREATE , [bp+2] , [bp+6] , [bp+10]
+
+
     mov ax , [ss:bp]
 
     mov ax , KERNEL_OBJECT_TYPE_FILE
@@ -238,19 +235,27 @@ validate_fs:
 
     mov bp , sp
 
+    push esi ebx ecx
     mov esi , 0
     mov cx , MaxNumOfFsExecutors
 
     @@:
 
     ccall fs_executor_exec, esi , FS_EXECUTOR_CMD_VALIDATE,\
-    [ss:bp+10] ,[ss:bp+6]
+    [ss:bp+2] ,[ss:bp+6]
+
+    cmp eax , 1
+    je .Found
 
     inc si 
     cmp si , cx
     jl @b
+    jmp .NotFound
 .Found:
+    mov eax , 1
 .NotFound:
+
+    pop ecx ebx esi
     ret
 
 ;in
@@ -272,7 +277,7 @@ attach_fs_executor:
     
     mov bx , PTR_SIZE
     mul bx
-    add ax , FS_ExecutorTableBegin
+    add ax , FsExecutorTableBegin
     mov si , ax
 
     mov ax , [ss:bp+2]
@@ -292,19 +297,24 @@ attach_fs_executor:
 ;arg2 - cmd
 fs_executor_exec:
 
+    push bp
     mov bp , sp
+    sub bp , 2
 
     push ax bx cx dx si 
 
     mov ax , [ss:bp+2]
     mov cx , PTR_SIZE
     mul cx
-    add ax , FS_ExecutorTableBegin
+    add ax , FsExecutorTableBegin
     mov si , ax
-    mov ax , [ds:si]
+    mov di , [ds:si]
 
-    ccall ax , [ss:bp+6]
-
-    pop si dx cx bx ax 
+    cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_VALIDATE
+    jne @f
+        ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14]
+    @@:
+    pop si dx cx bx ax
+    pop bp 
 
     ret
