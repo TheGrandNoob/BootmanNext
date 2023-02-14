@@ -114,8 +114,6 @@ isofs_cmd_attach:
     call memcmp
 
     jne @f
-    mov eax , 1
-@@:
     pop es
 
     mov si , word [IsoFsLastPartitionOffset]
@@ -123,6 +121,7 @@ isofs_cmd_attach:
     mov [IsoFsLastPartitionOffset] , ax
     add si , 4
     mov [IsoFsLastPartitionOffset] , si
-
+    mov eax , 1
+@@:
     ret
 ISO_FsDiskRwBuffer rb 2048*2

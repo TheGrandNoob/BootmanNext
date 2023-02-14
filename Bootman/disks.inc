@@ -92,7 +92,7 @@ disks_getbpbType:
 disks_init_varables:
 
     mov [MainDiskID] , dl
-
+    mov [BootPartitionSector] , eax
     
     ret
 
@@ -137,22 +137,34 @@ disks_getLabel:
 ;carry if error
 attach_partition:
 
+   
     mov bp , sp
-    ccall validate_fs ,[ss:bp+6] , [ss:bp+2]
-    
-    cmp eax , 0
-    je .end
 
+    mov esi , 0
+    mov cx , MaxNumOfFsExecutors
 
+    @@:
+
+    ccall fs_executor_exec, esi , FS_EXECUTOR_CMD_ATTACH_PARTITION,\
+    [ss:bp+2] ,[ss:bp+6]
+
+    cmp eax , 1
+    je .Found
+
+    inc si 
+    cmp si , cx
+    jl @b
+    jmp .NotFound
+.Found:
     push ax bx
-    mov si , [FsPartitionTable]
+    mov si , FsPartitionTable
     
     @@:
         mov al , [es:si]
         test al , al
         jz @f
 
-        add si , (FsPartitionTableBegin-FsExecutorTableEnd)/MaxNumOfPartitions
+        add si , ((FsPartitionTableBegin-FsExecutorTableEnd)/MaxNumOfPartitions)
         cmp si , di
         jnge @b
     @@:
@@ -168,14 +180,14 @@ attach_partition:
     cmp bh , [ss:bp+10]
     jne @f
     call disks_getLabel    
-    mov bh , al
 @@:
-    mov [es:si] , bh
+    mov byte [es:si + Partition.label] , al
 
-    mov [currentPath] , bh
+    mov [currentPath] , al
     mov [currentPath+1] , ':'
     mov [currentPath+2] , '\'
-
+    mov [currentPath+3] , '$'
+.NotFound:
 .end:
     ret
 ;in
@@ -240,7 +252,7 @@ validate_fs:
     @@:
 
     ccall fs_executor_exec, esi , FS_EXECUTOR_CMD_VALIDATE,\
-    [ss:bp+2] ,[ss:bp+6]
+    [ss:bp+6],[ss:bp+2]
 
     cmp eax , 1
     je .Found
@@ -297,9 +309,9 @@ fs_executor_exec:
 
     push bp
     mov bp , sp
-    sub bp , 2
+    add bp , 2
 
-    push ax bx cx dx si 
+    push bx cx dx si di es
 
     mov ax , [ss:bp+2]
     mov cx , PTR_SIZE
@@ -312,7 +324,12 @@ fs_executor_exec:
     jne @f
         ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14]
     @@:
-    pop si dx cx bx ax
+
+    cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_ATTACH_PARTITION
+    jne @f
+        ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14]
+    @@:
+    pop es di si dx cx bx
     pop bp 
 
     ret

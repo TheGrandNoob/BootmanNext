@@ -1,5 +1,7 @@
 BootmanSeg dw 0x00
 MainDiskID db 0x00
+BootPartitionSector dd 0x00
+BootDiskPartition dw 0x00
 
 struc partition{
     db DiskId

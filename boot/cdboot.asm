@@ -39,6 +39,7 @@ start:
 @@:
 	mov dl ,[bootDiskId]
 	add eax , 16
+	mov [BootPartitionSector] , eax
 	mov cx , 1
 	mov bx , 0x500 
 	call read_2k_sectors
@@ -136,6 +137,7 @@ start:
 	call read_2k_sectors
 
 	mov dl ,[bootDiskId]
+	mov eax , [BootPartitionSector]
 	cli
     mov bp , 0
     mov es , bp
@@ -159,6 +161,8 @@ boot_error:
 NotSupportedStr db "NotSupported",0x00
 System16Dir db "system16",0x00
 BootmanFile db "bootman.SYS",0x00
+
+BootPartitionSector dd 0x00
 
 ; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 ; display a string to the screen using the BIOS

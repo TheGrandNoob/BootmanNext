@@ -44,9 +44,11 @@ main:
         ccall attach_fs_executor ,isofs_executor
         ccall attach_fs_executor ,fatfs_executor
 
-        mov ax , 0
+        mov edx , 0
+        mov dl ,[MainDiskID]
+        mov [BootDiskPartition] , 0xFFFF
 
-        ccall attach_partition, 32 , edx , 0
+        ccall attach_partition, [BootPartitionSector]  , edx , 0
 
         
         ;ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
