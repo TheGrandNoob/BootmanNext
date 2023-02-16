@@ -9,6 +9,7 @@ struc partition{
     dw type
 }
 
+currentPartition dw 0
 partitions rw 256
 currentPath rb 256
 partitionCount rb 0

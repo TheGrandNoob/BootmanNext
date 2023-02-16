@@ -50,8 +50,13 @@ main:
 
         ccall attach_partition, [BootPartitionSector]  , edx , 0
 
+        jc .diskError
         
-        ;ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
+        mov bp , 0
+        mov es , bp
+
+        ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
+
         ;ccall ReadFile , eax , cs ,dword DISK_RW_BUFFER , dword 4096
         ;ccall FreeHandle , eax
 
@@ -59,7 +64,7 @@ main:
         call poweroff
 
 .diskError:
-        mov dx , diskSubSysErrorStr
+        mov edx , diskSubSysErrorStr
         jmp .error
 .error:
 

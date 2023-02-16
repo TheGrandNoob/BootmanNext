@@ -23,6 +23,7 @@ struc Partition_t
 }
 virtual at 0
   Partition Partition_t
+  PartitionElSize:
 end virtual
 lastFsExecutorId dw 0x00
 LastPartitionID dw 0x00
@@ -164,53 +165,74 @@ attach_partition:
         test al , al
         jz @f
 
-        add si , ((FsPartitionTableBegin-FsExecutorTableEnd)/MaxNumOfPartitions)
+        add si , PartitionElSize
         cmp si , di
         jnge @b
     @@:
     pop bx ax
+    
+    
+    mov byte [si + Partition.flags] , PARTITON_FLAG_MOUTED
+    mov word [si + Partition.fsType] , ax
 
-    mov byte [es:si + Partition.flags] , PARTITON_FLAG_MOUTED
-    mov word [es:si + Partition.fsType] , ax
     mov ax , [LastTransactionDataAddr]
-    mov word [es:si + Partition.fsInfoAddr] , ax
+    mov word [si + Partition.fsInfoAddr] , ax
     mov ax , [LastTransactionDataSeg]
-    mov word [es:si + Partition.fsInfoSeg] , ax
+    mov word [si + Partition.fsInfoSeg] , ax
     
     cmp bh , [ss:bp+10]
     jne @f
     call disks_getLabel    
 @@:
-    mov byte [es:si + Partition.label] , al
-
+    mov byte [si + Partition.label] , al
     mov [currentPath] , al
+
     mov [currentPath+1] , ':'
     mov [currentPath+2] , '\'
     mov [currentPath+3] , '$'
+    mov eax , 0
+    jmp .end
 .NotFound:
+    stc
 .end:
+    ret
+
+ReadFile:
     ret
 ;in
 ;arg1 - path
-;arg1 - pathSeg
 ;arg2 - flags
 ;out
-;eax - error code
+;eax - handle
 CreateFile:
 
     mov bp , sp
 
+    mov si , [bp+2]
 
+    cmp [es:si+1] , byte ':'
+    je .isGlobalPathWithDisk
+
+.isGlobalPathWithDisk:  
+
+    mov edi , FsPartitionTable
+    add edi , dword [currentPartition]
     mov esi , 0
-
-    ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_CREATE , [bp+2] , [bp+6] , [bp+10]
+    mov si , word [ds:edi + Partition.fsType]
+    mov eax , 0
+    mov ax , word [ds:edi + Partition.fsInfoAddr]
+    mov edx , 0
+    mov dx , word [ds:edi + Partition.fsInfoSeg]
+    ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_CREATE , [bp+2] , eax , edx
+    cmp eax , 0
+    je .end
 
 
     mov ax , [ss:bp]
 
     mov ax , KERNEL_OBJECT_TYPE_FILE
     call AddKernelObject
-
+.end:
     ret
 
 ReadFileStr db "ReadFile",0x0A,0x0D,'$'
@@ -320,6 +342,11 @@ fs_executor_exec:
     mov si , ax
     mov di , [ds:si]
 
+    cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_INIT
+    jne @f
+        ccall di , [ss:bp+6]
+    @@:
+
     cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_VALIDATE
     jne @f
         ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14]
@@ -329,6 +356,12 @@ fs_executor_exec:
     jne @f
         ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14]
     @@:
+
+    cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_CREATE
+    jne @f
+        ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14] , [ss:bp+18]
+    @@:
+
     pop es di si dx cx bx
     pop bp 
 
