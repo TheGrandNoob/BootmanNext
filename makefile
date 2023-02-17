@@ -15,10 +15,10 @@ Bootman.iso: boot-bios boot-cd bootman.SYS utils
 	rm -rf iso_root
 	mkdir -p iso_root
 	mkdir -p iso_root/system16
-	cp -r osRoot/* iso_root/
+	cp Bootman/bootman.SYS iso_root/system16/
+	cp -r IsoFiles/* iso_root/
 	mkdir iso_root/boot
 	cp -r boot/*.bin iso_root/boot/
-	cp Bootman/bootman.SYS iso_root/system16/
 	cp -r IsoFiles/* iso_root/
 	mkisofs -U -J \
 		-b boot/cdboot.bin\
@@ -56,7 +56,6 @@ bootman.SYS:
 	fasm Bootman/bootman.asm
 utils:
 	fasm Explorer/explorer.asm
-	cp Explorer/explorer.exe osRoot/system16/
 
 clean:
 

@@ -10,8 +10,8 @@ jmp main
 
 diskSubSysErrorStr db "Disk subsystem error$"
 
-ConfigPathStr db "/System16/config.cfg$"
-AutorunPathStr db "/System16/autorun.cfg$"
+ConfigPathStr db "\system16\config.cfg$"
+AutorunPathStr db "\system16\autorun.cfg$"
 
         include 'proc16.inc'
         include 'commondata.inc'

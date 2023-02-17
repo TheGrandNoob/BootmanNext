@@ -25,6 +25,21 @@ virtual at 0
   Partition Partition_t
   PartitionElSize:
 end virtual
+
+struc File_t
+{
+    .flags dw ?
+    .fsInfoAddr dw ?
+    .fsInfoSeg  dw ?
+}
+
+LastFileIndex dw 0
+
+virtual at 0
+  FileT File_t
+  FileSize:
+end virtual
+
 lastFsExecutorId dw 0x00
 LastPartitionID dw 0x00
 
@@ -39,6 +54,9 @@ FsPartitionTableBegin:
 FsPartitionTable: rept MaxNumOfPartitions n:0 {Partition_#n#_ Partition_t}
 FsPartitionTableEnd:
 
+FilesTableBegin:
+FilesTable: rept 64 n:0 {File_#n#_ File_t}
+FilesTableEnd:
 
 dapack:
     	dapack_size:    db 0x10
@@ -97,6 +115,8 @@ FsFragmentLenght:
 @@:
     mov al , [ds:si]
 
+    cmp al , '\'
+    je .end
     cmp al , '$'
     je .end
     cmp al , 0
@@ -216,7 +236,29 @@ attach_partition:
 .end:
     ret
 
+
+;in
+;arg1 - handle
+;out
+;eax - status
 ReadFile:
+    push ebx ecx edx
+
+    mov eax , [bp+2]
+    mov bx , FileSize
+    mul bx
+
+    mov si , ax 
+    
+
+    mov eax , 0
+    mov ebx , 0
+    mov ax , word [ds:si + FilesTableBegin + FileT.fsInfoSeg]
+    mov bx , word [ds:si + FilesTableBegin + FileT.fsInfoSeg]
+    
+    ccall fs_executor_exec, esi , FS_EXECUTOR_CMD_READ_FILE,eax, ebx
+
+    pop edx ecx ebx 
     ret
 ;in
 ;arg1 - path
@@ -250,10 +292,29 @@ CreateFile:
     je .end
 
 
-    mov ax , [ss:bp]
+    mov si , [LastFileIndex]
+    inc si 
+    mov [LastFileIndex] , si
 
-    mov ax , KERNEL_OBJECT_TYPE_FILE
-    call AddKernelObject
+    mov ax , si
+    mov bx , FileSize
+    mul bx 
+    
+    mov si , ax 
+    
+    mov ax , [LastTransactionDataAddr]
+    mov [ds:si + FilesTableBegin + FileT.fsInfoAddr] , ax
+    mov ax , [LastTransactionDataSeg]
+    mov [ds:si + FilesTableBegin + FileT.fsInfoSeg] , ax
+
+    mov esi ,  0
+    mov si , [LastFileIndex]
+    dec si
+    mov eax , esi 
+    ;mov ax , [ss:bp]
+
+    ;mov ax , KERNEL_OBJECT_TYPE_FILE
+    ;call AddKernelObject
 .end:
     ret
 

@@ -1,6 +1,6 @@
 ISOFS_FILE_STATUS_NOT_FOUND equ 0x1
 ISOFS_FILE_STATUS_FOUND equ 0x2
-
+pathLenght dw 0
 
 IsoFs_indifier db "CD001" , 0x00
 
@@ -158,32 +158,6 @@ isofs_cmd_attach:
 @@:
     ret
 
-;in
-;ds - str seg
-;dx - str
-;out 
-;cx - lenght
-IsoFs_FragmentLenght:
-    push si dx ax 
-
-    mov cx , 0
-    mov si , dx
-@@:
-    mov al , [ds:si]
-    cmp al , '$'
-    je .end
-    cmp al , 0
-    je .end
-    cmp al , '\'
-    je .end
-
-    inc si 
-    inc cx
-
-    jmp $b
-.end:
-    pop ax dx si
-    ret
 
 ;in
 ;dx - file name
@@ -198,16 +172,9 @@ IsoFs_SearchInDir:
     cmp byte [ds:si] , 0
     je .NotFound
 
-    pusha 
-
-    add si , 33
-    mov dx , si
-    mov ah , 0x9
-    int 21h
-    popa
-
     add si , 33
     mov di , dx
+    call FsFragmentLenght
     call memcmp
     je .Found
     sub si , 33
@@ -218,15 +185,17 @@ IsoFs_SearchInDir:
     jmp @b
 .NotFound:
 
-    mov eax , ISOFS_FILE_STATUS_NOT_FOUND
+    mov ebx , ISOFS_FILE_STATUS_NOT_FOUND
     jmp .end
 
 .Found:
-    mov eax , ISOFS_FILE_STATUS_FOUND
+    mov eax , [ds:si+2-33]
+    mov ebx , ISOFS_FILE_STATUS_FOUND
     
 .end:
     pop di si dx cx
     ret
+
 isofs_cmd_create:
 
     mov sp , bp
@@ -243,7 +212,7 @@ isofs_cmd_create:
     mov es , si
     mov cx , 2
 
-
+    
     call read_sectors
 
     push es
@@ -253,8 +222,6 @@ isofs_cmd_create:
 
     mov dl , byte [si+IsoFsPartition.diskId]
     pop es
-
-
 
     mov si , ISO_FsDiskRwBuffer
     mov eax , dword [es:si+2+156]
@@ -269,34 +236,64 @@ isofs_cmd_create:
     mov dx , [bp+6]
     mov si , ISO_FsDiskRwBuffer
 
+
+    call strlen
+    add cx , dx
+    mov [pathLenght] , cx
 .startSearch:
-pusha 
-
-    mov ah , 0x9
-    int 21h
-popa
-
 @@:
+    mov si , ISO_FsDiskRwBuffer
+    xchg bx , bx 
     call IsoFs_SearchInDir
 
     cmp ebx , ISOFS_FILE_STATUS_NOT_FOUND
     je .NotFound
-    cmp ebx , ISOFS_FILE_STATUS_FOUND
-    je .startSearch
+    
+    push ecx
+    push dx
+    mov ebx , ISO_FsDiskRwBuffer
+    mov si , cs
+    mov es , si
+    mov esi , [bp+10]
+    mov dl ,  byte [si+IsoFsPartition.diskId]
+    mov cx , 2
+
+    call read_sectors
+    pop dx 
+
+    call FsFragmentLenght
+    add dx , cx
+    cmp dx , word [pathLenght]
+    pop ecx
+    jge .Found
+    inc dx
+
+
     jmp @b
 
-
+.Found:
 
     mov si , [IsoFsLastFileOffset]
     mov [LastTransactionDataAddr] , si
 
+    mov [ds:si + IsoFsFile.Size] , ecx
+    mov [ds:si + IsoFsFile.StartSector] , ecx
+    mov esi , [bp+10]
+    mov dl ,  byte [si+IsoFsPartition.diskId]
+    mov [ds:si + IsoFsFile.diskId] , dl
 
     mov si , [IsoFsLastFileOffset]
     mov [LastTransactionDataAddr] , si
     add si , IsoFsFile_t_sizeof
+    mov [IsoFsLastFileOffset] , si
 
+    jmp @f
 .NotFound:
-    mov eax , 0 
+    mov eax , 0
+    jmp .end
+@@:
+    mov eax , 1
+    jmp .end
 .end:
     ret
 ISO_FsDiskRwBuffer rb 2048*2
