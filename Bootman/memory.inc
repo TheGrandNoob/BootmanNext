@@ -632,7 +632,9 @@ memcpy:
 ;es - buf2 seg
 ;cx - lenght
 ;out
-;carry if equals
+;zero if equals
 memcmp:
+	pusha
 	rep cmpsb
+	popa
 	ret

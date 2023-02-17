@@ -19,6 +19,7 @@ Bootman.iso: boot-bios boot-cd bootman.SYS utils
 	mkdir iso_root/boot
 	cp -r boot/*.bin iso_root/boot/
 	cp Bootman/bootman.SYS iso_root/system16/
+	cp -r IsoFiles/* iso_root/
 	mkisofs -U -J \
 		-b boot/cdboot.bin\
 		-no-emul-boot -c boot/boot.cat\

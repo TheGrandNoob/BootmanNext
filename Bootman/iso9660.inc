@@ -1,3 +1,6 @@
+ISOFS_FILE_STATUS_NOT_FOUND equ 0x1
+ISOFS_FILE_STATUS_FOUND equ 0x2
+
 
 IsoFs_indifier db "CD001" , 0x00
 
@@ -135,8 +138,8 @@ isofs_cmd_attach:
     mov cx , 5
     call memcmp
 
-    jne @f
     pop es
+    jne @f
 
     mov si , word [IsoFsLastPartitionOffset]
     mov eax , [bp+2]
@@ -182,7 +185,48 @@ IsoFs_FragmentLenght:
     pop ax dx si
     ret
 
+;in
+;dx - file name
+;si - buffer address
+;out
+;eax - file sector
+;ebx - status
+IsoFs_SearchInDir:
 
+    push cx dx si di
+@@:
+    cmp byte [ds:si] , 0
+    je .NotFound
+
+    pusha 
+
+    add si , 33
+    mov dx , si
+    mov ah , 0x9
+    int 21h
+    popa
+
+    add si , 33
+    mov di , dx
+    call memcmp
+    je .Found
+    sub si , 33
+
+    movzx di , byte [ds:si]
+    add si , di
+
+    jmp @b
+.NotFound:
+
+    mov eax , ISOFS_FILE_STATUS_NOT_FOUND
+    jmp .end
+
+.Found:
+    mov eax , ISOFS_FILE_STATUS_FOUND
+    
+.end:
+    pop di si dx cx
+    ret
 isofs_cmd_create:
 
     mov sp , bp
@@ -192,8 +236,8 @@ isofs_cmd_create:
     mov eax , [bp+14]
     mov es , ax 
 
-    mov eax , dword [es:si]
-    mov dl , byte [es:si+IsoFsPartition.diskId]
+    mov eax , dword [si]
+    mov dl , byte [si+IsoFsPartition.diskId]
     mov ebx , ISO_FsDiskRwBuffer
     mov si , cs
     mov es , si
@@ -207,7 +251,7 @@ isofs_cmd_create:
     mov eax , [bp+14]
     mov es , ax 
 
-    mov dl , byte [es:si+IsoFsPartition.diskId]
+    mov dl , byte [si+IsoFsPartition.diskId]
     pop es
 
 
@@ -222,13 +266,26 @@ isofs_cmd_create:
 
     call read_sectors
 
-    mov dx , [bp+2]
-    call strlen
-    mov bx , cx
-    mov dx , [bp+2]
+    mov dx , [bp+6]
+    mov si , ISO_FsDiskRwBuffer
+
+.startSearch:
+pusha 
+
+    mov ah , 0x9
+    int 21h
+popa
+
+@@:
+    call IsoFs_SearchInDir
+
+    cmp ebx , ISOFS_FILE_STATUS_NOT_FOUND
+    je .NotFound
+    cmp ebx , ISOFS_FILE_STATUS_FOUND
+    je .startSearch
+    jmp @b
 
 
-    jg @b
 
     mov si , [IsoFsLastFileOffset]
     mov [LastTransactionDataAddr] , si
@@ -238,5 +295,8 @@ isofs_cmd_create:
     mov [LastTransactionDataAddr] , si
     add si , IsoFsFile_t_sizeof
 
+.NotFound:
+    mov eax , 0 
+.end:
     ret
 ISO_FsDiskRwBuffer rb 2048*2

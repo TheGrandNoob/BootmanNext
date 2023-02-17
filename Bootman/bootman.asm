@@ -11,7 +11,7 @@ jmp main
 diskSubSysErrorStr db "Disk subsystem error$"
 
 ConfigPathStr db "/System16/config.cfg$"
-AutorunPathStr db "/System16/config.cfg$"
+AutorunPathStr db "/System16/autorun.cfg$"
 
         include 'proc16.inc'
         include 'commondata.inc'
@@ -57,8 +57,8 @@ main:
 
         ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
 
-        ;ccall ReadFile , eax , cs ,dword DISK_RW_BUFFER , dword 4096
-        ;ccall FreeHandle , eax
+        ccall ReadFile , eax ,dword DISK_RW_BUFFER , dword 4096
+        ccall FreeHandle , eax
 
         call shell_task
         call poweroff

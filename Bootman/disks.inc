@@ -89,6 +89,25 @@ disks_getbpbType:
     jl @b
 .IsValidated:
     ret
+FsFragmentLenght:
+    push ax dx si 
+    mov si , dx
+    mov dx , 0
+
+@@:
+    mov al , [ds:si]
+
+    cmp al , '$'
+    je .end
+    cmp al , 0
+    je .end
+    inc si
+    inc dx
+    jmp @b
+.end:
+    mov cx , dx
+    pop si dx ax
+    ret
 
 disks_init_varables:
 
@@ -223,7 +242,10 @@ CreateFile:
     mov ax , word [ds:edi + Partition.fsInfoAddr]
     mov edx , 0
     mov dx , word [ds:edi + Partition.fsInfoSeg]
-    ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_CREATE , [bp+2] , eax , edx
+
+    mov ebx , [bp+2]
+    inc ebx
+    ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_CREATE , ebx , eax , edx
     cmp eax , 0
     je .end
 
@@ -342,6 +364,7 @@ fs_executor_exec:
     mov si , ax
     mov di , [ds:si]
 
+
     cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_INIT
     jne @f
         ccall di , [ss:bp+6]
@@ -360,6 +383,11 @@ fs_executor_exec:
     cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_CREATE
     jne @f
         ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14] , [ss:bp+18]
+    @@:
+
+    cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_FREE_FILE
+    jne @f
+        ccall di , [ss:bp+6]
     @@:
 
     pop es di si dx cx bx
