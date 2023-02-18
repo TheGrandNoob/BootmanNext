@@ -18,6 +18,8 @@ Bootman.iso: boot-bios boot-cd bootman.SYS utils
 	cp Bootman/bootman.SYS iso_root/system16/
 	cp -r IsoFiles/* iso_root/
 	mkdir iso_root/boot
+	smlrcc -dost cmd/cmd.c -o cmd.sys
+	cp cmd/cmd.sys iso_root/system16/
 	cp -r boot/*.bin iso_root/boot/
 	cp -r IsoFiles/* iso_root/
 	mkisofs -U -J \
@@ -55,7 +57,11 @@ boot-cd:
 bootman.SYS:
 	fasm Bootman/bootman.asm
 utils:
+	mkdir utils
+	cd cmd && $(MAKE)
+	cd .. 
 	fasm Explorer/explorer.asm
+
 
 clean:
 

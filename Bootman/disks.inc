@@ -258,12 +258,12 @@ ReadFile:
     
     mov eax , 0
     mov ebx , 0
+    
     mov ax , word [ds:si + FilesTableBegin + FileT.fsInfoSeg]
-    mov bx , word [ds:si + FilesTableBegin + FileT.fsInfoSeg]
+    mov bx , word [ds:si + FilesTableBegin + FileT.fsInfoAddr]
     mov ecx , 0
     mov cx ,[ds:si + FilesTableBegin + FileT.fsType]
 
-    xchg bx , bx 
     ccall fs_executor_exec, ecx , FS_EXECUTOR_CMD_READ_FILE,[ss:bp+6],[ss:bp+10],[ss:bp+14],eax, ebx
 
     pop edx ecx ebx 
@@ -313,7 +313,6 @@ CreateFile:
     mul bx 
     
     mov si , ax  
-
     mov [ds:si + FilesTableBegin + FileT.fsType] , cx
     mov ax , [LastTransactionDataAddr]
     mov [ds:si + FilesTableBegin + FileT.fsInfoAddr] , ax

@@ -92,12 +92,45 @@ isofs_init:
 ;arg5 - data addr
 isofs_cmd_read:
     mov bp , sp
+    push ds
     xchg bx , bx 
     mov eax , [ss:bp+2]
     mov eax , [ss:bp+6]
     mov eax , [ss:bp+10]
-    mov eax , [ss:bp+14]
+
+    mov eax , dword [ss:bp+14]
+    mov ds , ax
+
     mov eax , [ss:bp+18]
+    mov esi , eax
+    mov ecx , dword [si + IsoFsFile.Size] 
+
+    cmp ecx , dword [ss:bp+6]
+    jle .direct_read
+
+    jmp .buffered_read
+.direct_read:
+
+
+    mov edx , 0
+    mov eax , ecx
+    mov ebx , 2048
+    div ebx
+
+    cmp edx , 0
+    jng @f
+        inc eax
+    @@:
+    mov ecx , eax 
+    mov eax , [si + IsoFsFile.StartSector]
+    mov ebx , [ss:bp+2]
+    mov dl , [si + IsoFsFile.diskId] 
+    call read_sectors
+    jmp .end
+.buffered_read:
+
+.end:
+    pop ds
     ret
 isofs_cmd_free:
 
@@ -185,9 +218,10 @@ isofs_cmd_attach:
 ;out
 ;eax - file sector
 ;ebx - status
+;edi - file ptr
 IsoFs_SearchInDir:
 
-    push cx dx si di
+    push cx dx si
 @@:
     cmp byte [ds:si] , 0
     je .NotFound
@@ -211,9 +245,10 @@ IsoFs_SearchInDir:
 .Found:
     mov eax , [ds:si+2-33]
     mov ebx , ISOFS_FILE_STATUS_FOUND
-    
+    sub si , 33
+    mov edi , esi
 .end:
-    pop di si dx cx
+    pop si dx cx
     ret
 
 isofs_cmd_create:
@@ -268,7 +303,16 @@ isofs_cmd_create:
     cmp ebx , ISOFS_FILE_STATUS_NOT_FOUND
     je .NotFound
     
+    
+    call FsFragmentLenght
+    add dx , cx
+    inc dx
+    cmp dx , word [pathLenght]
+    xchg bx , bx
+    jge .Found
+    
     push ecx
+    
     push dx
     mov ebx , ISO_FsDiskRwBuffer
     mov si , cs
@@ -277,17 +321,11 @@ isofs_cmd_create:
     mov dl ,  byte [si+IsoFsPartition.diskId]
     mov cx , 2
 
+    
     call read_sectors
     pop dx 
 
-    call FsFragmentLenght
-    add dx , cx
-    cmp dx , word [pathLenght]
     pop ecx
-    jge .Found
-    inc dx
-
-
     jmp @b
 
 .Found:
@@ -295,10 +333,14 @@ isofs_cmd_create:
     mov si , [IsoFsLastFileOffset]
     mov [LastTransactionDataAddr] , si
 
+    mov ecx ,  dword [ds:di+10]
     mov [ds:si + IsoFsFile.Size] , ecx
-    mov [ds:si + IsoFsFile.StartSector] , ecx
+    mov eax , [ds:di+2]
+    mov [ds:si + IsoFsFile.StartSector] , eax
     mov esi , [bp+10]
     mov dl ,  byte [si+IsoFsPartition.diskId]
+    
+    mov si , [IsoFsLastFileOffset]
     mov [ds:si + IsoFsFile.diskId] , dl
 
     mov si , [IsoFsLastFileOffset]

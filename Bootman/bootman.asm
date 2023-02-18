@@ -62,8 +62,14 @@ main:
         mov [AutoRunFileHandle] , eax
 
         ccall ReadFile , eax ,dword DISK_RW_BUFFER , dword 4096 , dword BytesRead
-        ccall FreeHandle , [AutoRunFileHandle]
+        ;ccall FreeHandle , [AutoRunFileHandle]
 
+
+        ccall exec,DISK_RW_BUFFER
+
+        mov ah , 0x9
+        mov dx , DISK_RW_BUFFER
+        int 21h
         call shell_task
         call poweroff
 

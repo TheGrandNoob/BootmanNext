@@ -40,3 +40,17 @@ process_kernelObjectExecutor:
     mov ah , 0x9
     int 21h
     retf
+
+;arg1 - path
+exec:
+
+    
+    ccall CreateFile, [bP+2] ,FILE_OPEN_EXISTING
+    mov edx , eax
+    call memory_allocate_segment
+    mov eax , 0
+    mov ax , es
+    ccall ReadFile , eax , eax , dword 65536 , dword BytesRead
+
+    mov dx , [bp+2]
+    ret
