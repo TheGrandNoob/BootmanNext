@@ -28,6 +28,7 @@ end virtual
 
 struc File_t
 {
+    .fsType dw ?
     .flags dw ?
     .fsInfoAddr dw ?
     .fsInfoSeg  dw ?
@@ -239,24 +240,31 @@ attach_partition:
 
 ;in
 ;arg1 - handle
+;arg2 - buffer address (es:buffer segment)
+;arg3 - Num of bytes to read
+;arg4 - Num of bytes read
 ;out
 ;eax - status
 ReadFile:
+    mov bp , sp
     push ebx ecx edx
 
     mov eax , [bp+2]
     mov bx , FileSize
     mul bx
 
+    mov esi , 0
     mov si , ax 
     
-
     mov eax , 0
     mov ebx , 0
     mov ax , word [ds:si + FilesTableBegin + FileT.fsInfoSeg]
     mov bx , word [ds:si + FilesTableBegin + FileT.fsInfoSeg]
-    
-    ccall fs_executor_exec, esi , FS_EXECUTOR_CMD_READ_FILE,eax, ebx
+    mov ecx , 0
+    mov cx ,[ds:si + FilesTableBegin + FileT.fsType]
+
+    xchg bx , bx 
+    ccall fs_executor_exec, ecx , FS_EXECUTOR_CMD_READ_FILE,[ss:bp+6],[ss:bp+10],[ss:bp+14],eax, ebx
 
     pop edx ecx ebx 
     ret
@@ -287,21 +295,26 @@ CreateFile:
 
     mov ebx , [bp+2]
     inc ebx
+    push esi
     ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_CREATE , ebx , eax , edx
+    pop esi
     cmp eax , 0
     je .end
 
+    mov ecx , esi
 
     mov si , [LastFileIndex]
     inc si 
     mov [LastFileIndex] , si
+    dec si
 
     mov ax , si
     mov bx , FileSize
     mul bx 
     
-    mov si , ax 
-    
+    mov si , ax  
+
+    mov [ds:si + FilesTableBegin + FileT.fsType] , cx
     mov ax , [LastTransactionDataAddr]
     mov [ds:si + FilesTableBegin + FileT.fsInfoAddr] , ax
     mov ax , [LastTransactionDataSeg]
@@ -317,27 +330,7 @@ CreateFile:
     ;call AddKernelObject
 .end:
     ret
-
-ReadFileStr db "ReadFile",0x0A,0x0D,'$'
-
-FreeFileHandleStr db "FreeFileHandle",0x0A,0x0D,'$'
 disks_kernelObjectExecutor:
-
-    cmp bx , 0x1
-    jne @f
-
-    mov dx , FreeFileHandleStr
-    mov ah , 0x9
-    int 21h   
-@@:
-
-    cmp bx , EXECUTOR_CMD_TYPE_READ_FILE
-    jne @f
-
-    mov dx , ReadFileStr
-    mov ah , 0x9
-    int 21h   
-@@:
 
     retf
 
@@ -449,6 +442,11 @@ fs_executor_exec:
     cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_FREE_FILE
     jne @f
         ccall di , [ss:bp+6]
+    @@:
+
+    cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_READ_FILE
+    jne @f
+        ccall di , [ss:bp+6] , [ss:bp+10] , [ss:bp+14] , [ss:bp+18], [ss:bp+22] , [ss:bp+26]
     @@:
 
     pop es di si dx cx bx

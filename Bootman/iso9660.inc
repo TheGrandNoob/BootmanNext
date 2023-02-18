@@ -71,14 +71,34 @@ isofs_executor:
 
     ccall isofs_cmd_create , [ss:bp+6] , [ss:bp+10], [ss:bp+14]
 @@:
+
+    cmp bx , FS_EXECUTOR_CMD_READ_FILE
+    jne @f
+
+    ccall isofs_cmd_read , [ss:bp+6] , [ss:bp+10], [ss:bp+14] , [ss:bp+18]  , [ss:bp+22] 
+@@:
     ret
 isofs_init:
 
     mov [IsoFsLastPartitionOffset] , IsoFsPartitions 
+    mov [IsoFsLastFileOffset] , IsoFsFiles
 
     ret
 
-
+;arg1 - buffer addr (es - segment)
+;arg3 - Num of bytes to read
+;arg2 - Num of bytes read
+;arg4 - data segment
+;arg5 - data addr
+isofs_cmd_read:
+    mov bp , sp
+    xchg bx , bx 
+    mov eax , [ss:bp+2]
+    mov eax , [ss:bp+6]
+    mov eax , [ss:bp+10]
+    mov eax , [ss:bp+14]
+    mov eax , [ss:bp+18]
+    ret
 isofs_cmd_free:
 
     ret
@@ -243,7 +263,6 @@ isofs_cmd_create:
 .startSearch:
 @@:
     mov si , ISO_FsDiskRwBuffer
-    xchg bx , bx 
     call IsoFs_SearchInDir
 
     cmp ebx , ISOFS_FILE_STATUS_NOT_FOUND

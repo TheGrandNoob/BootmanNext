@@ -8,6 +8,9 @@ prg_begin:
 
 jmp main
 
+AutoRunFileHandle dd 0
+BytesRead dd 0
+
 diskSubSysErrorStr db "Disk subsystem error$"
 
 ConfigPathStr db "\system16\config.cfg$"
@@ -56,9 +59,10 @@ main:
         mov es , bp
 
         ccall CreateFile, AutorunPathStr ,FILE_OPEN_EXISTING
+        mov [AutoRunFileHandle] , eax
 
-        ccall ReadFile , eax ,dword DISK_RW_BUFFER , dword 4096
-        ccall FreeHandle , eax
+        ccall ReadFile , eax ,dword DISK_RW_BUFFER , dword 4096 , dword BytesRead
+        ccall FreeHandle , [AutoRunFileHandle]
 
         call shell_task
         call poweroff
