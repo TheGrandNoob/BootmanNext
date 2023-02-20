@@ -93,7 +93,7 @@ isofs_init:
 isofs_cmd_read:
     mov bp , sp
     push ds
-    xchg bx , bx 
+     
     mov eax , [ss:bp+2]
     mov eax , [ss:bp+6]
     mov eax , [ss:bp+10]
@@ -105,6 +105,7 @@ isofs_cmd_read:
     mov esi , eax
     mov ecx , dword [si + IsoFsFile.Size] 
 
+    mov eax , dword [ss:bp+6]
     cmp ecx , dword [ss:bp+6]
     jle .direct_read
 
@@ -253,11 +254,10 @@ IsoFs_SearchInDir:
 
 isofs_cmd_create:
 
-    mov sp , bp
+    mov bp , sp
 
-
-    mov esi , [bp+10]
-    mov eax , [bp+14]
+    mov esi , [bp+6]
+    mov eax , [bp+10]
     mov es , ax 
 
     mov eax , dword [si]
@@ -271,8 +271,8 @@ isofs_cmd_create:
     call read_sectors
 
     push es
-    mov esi , [bp+10]
-    mov eax , [bp+14]
+    mov esi , [bp+6]
+    mov eax , [bp+10]
     mov es , ax 
 
     mov dl , byte [si+IsoFsPartition.diskId]
@@ -288,7 +288,7 @@ isofs_cmd_create:
 
     call read_sectors
 
-    mov dx , [bp+6]
+    mov dx , [bp+2]
     mov si , ISO_FsDiskRwBuffer
 
 
@@ -308,7 +308,7 @@ isofs_cmd_create:
     add dx , cx
     inc dx
     cmp dx , word [pathLenght]
-    xchg bx , bx
+    
     jge .Found
     
     push ecx
@@ -317,7 +317,7 @@ isofs_cmd_create:
     mov ebx , ISO_FsDiskRwBuffer
     mov si , cs
     mov es , si
-    mov esi , [bp+10]
+    mov esi , [bp+6]
     mov dl ,  byte [si+IsoFsPartition.diskId]
     mov cx , 2
 
@@ -337,7 +337,7 @@ isofs_cmd_create:
     mov [ds:si + IsoFsFile.Size] , ecx
     mov eax , [ds:di+2]
     mov [ds:si + IsoFsFile.StartSector] , eax
-    mov esi , [bp+10]
+    mov esi , [bp+6]
     mov dl ,  byte [si+IsoFsPartition.diskId]
     
     mov si , [IsoFsLastFileOffset]

@@ -15,6 +15,7 @@ diskSubSysErrorStr db "Disk subsystem error$"
 
 ConfigPathStr db "\system16\config.cfg$"
 AutorunPathStr db "\system16\autorun.cfg$"
+CmdSysPath db "\system16\load32.sys$"
 
         include 'proc16.inc'
         include 'commondata.inc'
@@ -47,6 +48,10 @@ main:
         ccall attach_fs_executor ,isofs_executor
         ccall attach_fs_executor ,fatfs_executor
 
+        call memory_allocate_segment
+        mov ax , 0
+        mov es , ax
+
         mov edx , 0
         mov dl ,[MainDiskID]
         mov [BootDiskPartition] , 0xFFFF
@@ -64,8 +69,7 @@ main:
         ccall ReadFile , eax ,dword DISK_RW_BUFFER , dword 4096 , dword BytesRead
         ;ccall FreeHandle , [AutoRunFileHandle]
 
-
-        ccall exec,DISK_RW_BUFFER
+        ccall exec, CmdSysPath
 
         mov ah , 0x9
         mov dx , DISK_RW_BUFFER

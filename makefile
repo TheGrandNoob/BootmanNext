@@ -11,17 +11,16 @@ all-img: Bootman.img
 all-clean: clean
 
 
-Bootman.iso: boot-bios boot-cd bootman.SYS utils
+Bootman.iso: boot-bios boot-cd bootman.SYS SysUtils
 	rm -rf iso_root
 	mkdir -p iso_root
 	mkdir -p iso_root/system16
 	cp Bootman/bootman.SYS iso_root/system16/
 	cp -r IsoFiles/* iso_root/
 	mkdir iso_root/boot
-	smlrcc -dost cmd/cmd.c -o cmd.sys
-	cp cmd/cmd.sys iso_root/system16/
 	cp -r boot/*.bin iso_root/boot/
 	cp -r IsoFiles/* iso_root/
+	cp -r utils/* iso_root/system16/
 	mkisofs -U -J \
 		-b boot/cdboot.bin\
 		-no-emul-boot -c boot/boot.cat\
@@ -31,7 +30,7 @@ Bootman.iso: boot-bios boot-cd bootman.SYS utils
 		
 	rm -rf iso_root
 
-Bootman.img: boot-bios boot-cd utils
+Bootman.img: boot-bios boot-cd SysUtils
 	rm -f bootman.img
 	dd if=/dev/zero bs=1M count=0 seek=64 of=bootman.img
 	parted -s bootman.img mklabel gpt
@@ -56,17 +55,16 @@ boot-cd:
 	fasm boot/cdboot.asm
 bootman.SYS:
 	fasm Bootman/bootman.asm
-utils:
-	mkdir utils
-	cd cmd && $(MAKE)
-	cd .. 
-	fasm Explorer/explorer.asm
-
+SysUtils:
+	mkdir -p utils
+	$(MAKE) -C cmd
+	$(MAKE) -C load32
 
 clean:
 
 	rm -rf Bootman.iso Bootman.img
 	find . -name "*.bin" -type f -delete
 	find . -name "*.SYS" -type f -delete
+	find . -name "*.sys" -type f -delete
 	find . -name "*.exe" -type f -delete
 	find . -name "*.o" -type f -delete

@@ -4,71 +4,30 @@ SEGMENT_SIZE equ 0x1000
 
 MEMORY_ALLOCATE_STRUCTURE_SIZE equ 0x10
 
-SEGMENT_ALLOC_TABLE_LO_SEG  dw 0
-SEGMENT_ALLOC_TABLE_LO_SIZE  dw 0
-SEGMENT_ALLOC_TABLE_LO_ADDR dw 0
+SEGMENT_TABLE_SIZE_IN_BYTES equ 100 ;(1024*16/65536/8) - 72
 
-SEGMENT_ALLOC_TABLE_HI_SEG  dw 0
-SEGMENT_ALLOC_TABLE_HI_SIZE  dw 0
-SEGMENT_ALLOC_TABLE_HI_ADDR dw 0
+SEGMENT_ALLOC_TABLE_SEG  dw 0
+SEGMENT_ALLOC_TABLE_LO_SIZE  dw SEGMENT_TABLE_SIZE_IN_BYTES
+SEGMENT_ALLOC_TABLE_ADDR dw 0
 
+SegmentTable rb SEGMENT_TABLE_SIZE_IN_BYTES
 memory_init:
   	
+	mov [SEGMENT_ALLOC_TABLE_ADDR] , SegmentTable
+	mov [SEGMENT_ALLOC_TABLE_SEG] , ds
 	pusha
 	in al, 0x92
     or al, 2
 	out 0x92, al
 
+	
 	call memory_detect
-
-	mov ax , 32 
-	mov bp , 0x1000
-	mov es , bp
-	mov bx , 0x1000
-	call memory_create_heap_segment
-
-	mov si , bx 
-	inc si
-
-	xor dx , dx
-	mov bx , 8*4
-	mov ax , 0
-	mov dx , 1
-	div bx
-	mov [es:si] , ax		;STORE Segment entry table size
-	add si , 2
-	mov [es:si] , byte 0x00
-	sub si , 2
-
-	mov [SEGMENT_ALLOC_TABLE_LO_SEG] , es
-	mov si ,  [es:si]
-	mov [SEGMENT_ALLOC_TABLE_LO_ADDR] , si
-
-	mov ax , [LOW_MEMORY_AMOUNT_KB]
-
-	mov cx , 64
-	div cx
-
-	dec ax
-
-	mov [SEGMENT_ALLOC_TABLE_LO_SIZE] , ax
-
-	mov al , 0
-	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
-	mov es , bp
-	mov di , [SEGMENT_ALLOC_TABLE_LO_ADDR]
-	mov cx , [SEGMENT_ALLOC_TABLE_LO_SIZE]
-	call memset
-
-
-	mov es , bp
-	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
-
-	mov ax , 1
-	mov [es:si] , ax
 
 	mov bx , 0
 	call memory_set_segment_status_used
+
+	call memory_allocate_segment
+	call memory_create_heap_segment
 
 	popa
 	ret
@@ -441,13 +400,14 @@ memory_search_free_block:
 ;es - segment
 memory_allocate_segment:
 	
-	push bx bp
+	push bx cx dx bp
+	xor bx , bx
 	call memory_search_free_seg
 	mov bp , es
 	mov bx , es
 	call memory_set_segment_status_used
 
-	pop bp bx
+	pop bp dx cx bx
 	ret
 
 ;in
@@ -461,13 +421,15 @@ memory_set_segment_status_free:
 
 	xor dx , dx
 
-	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
+	mov bp , [SEGMENT_ALLOC_TABLE_SEG]
 	mov es , bp
-	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
+	mov si , [SEGMENT_ALLOC_TABLE_ADDR]
 
 	mov ax , bx 
 	mov bx , SEGMENT_SIZE
 	div bx
+
+	xor dx , dx
 
 	mov bx , 8
 	div bx
@@ -493,17 +455,20 @@ memory_set_segment_status_free:
 ;carry - error
 memory_set_segment_status_used:
 
+	        
 	push bp es si bx cx
 
 	xor dx , dx
 
-	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
+	mov bp , [SEGMENT_ALLOC_TABLE_SEG]
 	mov es , bp
-	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
+	mov si , [SEGMENT_ALLOC_TABLE_ADDR]
 
 	mov ax , bx 
 	mov bx , SEGMENT_SIZE
 	div bx
+
+	xor dx , dx
 
 	mov bx , 8
 	div bx
@@ -529,18 +494,22 @@ memory_set_segment_status_used:
 ;es - free segment
 memory_search_free_seg:
 	
+	        
 	push bp si di ax bx cx dx
 
 	xor dx , dx
-	xchg ax , bx
+	mov ax , bx
 
-	mov bp , [SEGMENT_ALLOC_TABLE_LO_SEG]
+	mov bp , [SEGMENT_ALLOC_TABLE_SEG]
 	mov es , bp
 	
-	mov si , [SEGMENT_ALLOC_TABLE_LO_ADDR]
+	mov si , [SEGMENT_ALLOC_TABLE_ADDR]
 
 	mov cx , SEGMENT_SIZE
 	div cx
+
+	xor dx , dx
+
 	mov bx , ax
 	mov cx , 8
 	div cx
@@ -572,7 +541,7 @@ memory_search_free_seg:
 		jne @f
 
 		mov ax , si
-		sub ax , [SEGMENT_ALLOC_TABLE_LO_ADDR]
+		sub ax , [SEGMENT_ALLOC_TABLE_ADDR]
 		
 		mov dx , 8
 		mul dx

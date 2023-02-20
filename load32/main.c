@@ -1,3 +1,10 @@
+int main();
+
+void _start(){
+    main();
+}
+
+#include <gdt.h>
 
 char* helloCmdStr = "HelloWorld$";
 
@@ -7,8 +14,9 @@ void putstr(char* str){
         "int 21h \n");
 }
 
-int _start(){
-
+int main(){
+    putstr(helloCmdStr);
     putstr(helloCmdStr);
     while(1);
 }
+

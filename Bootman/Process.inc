@@ -44,13 +44,22 @@ process_kernelObjectExecutor:
 ;arg1 - path
 exec:
 
+    mov bp , sp
     
-    ccall CreateFile, [bP+2] ,FILE_OPEN_EXISTING
+    mov edx , [bp+2]
+    ccall CreateFile, edx ,FILE_OPEN_EXISTING
+
     mov edx , eax
     call memory_allocate_segment
     mov eax , 0
-    mov ax , es
-    ccall ReadFile , eax , eax , dword 65536 , dword BytesRead
+    ccall ReadFile , edx , eax , dword 65536 , dword BytesRead
+    xchg bx , bx
 
-    mov dx , [bp+2]
+    mov ax , 0x3000
+    mov ds , ax
+    mov es , ax
+    mov ss , ax
+    mov sp , 0xFFFF
+    jmp 0x3000:00
+    
     ret

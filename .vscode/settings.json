@@ -20,5 +20,8 @@
                 }
             }
         ]
+    },
+    "files.associations": {
+        "gdt.h": "c"
     }
 }
