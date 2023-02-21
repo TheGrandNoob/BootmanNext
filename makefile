@@ -1,5 +1,5 @@
 .PHONY: all 
-all: Bootman.iso
+all: Bootman
 
 .PHONY: all-iso
 all-iso: Bootman.iso
@@ -10,8 +10,12 @@ all-img: Bootman.img
 .PHONY: all-clean
 all-clean: clean
 
+Bootman: boot-bios boot-cd
+	fasm Bootman/bootman.asm
+	cp -rf boot/*.bin bin
+	cp -rf Bootman/*.sys bin
 
-Bootman.iso: boot-bios boot-cd bootman.SYS SysUtils
+Bootman.iso: boot-bios boot-cd bootman.sys
 	rm -rf iso_root
 	mkdir -p iso_root
 	mkdir -p iso_root/system16
@@ -19,8 +23,6 @@ Bootman.iso: boot-bios boot-cd bootman.SYS SysUtils
 	cp -r IsoFiles/* iso_root/
 	mkdir iso_root/boot
 	cp -r boot/*.bin iso_root/boot/
-	cp -r IsoFiles/* iso_root/
-	cp -r utils/* iso_root/system16/
 	mkisofs -U -J \
 		-b boot/cdboot.bin\
 		-no-emul-boot -c boot/boot.cat\
@@ -30,11 +32,11 @@ Bootman.iso: boot-bios boot-cd bootman.SYS SysUtils
 		
 	rm -rf iso_root
 
-Bootman.img: boot-bios boot-cd SysUtils
+Bootman.img: boot-bios boot-cd
 	rm -f bootman.img
 	dd if=/dev/zero bs=1M count=0 seek=64 of=bootman.img
 	parted -s bootman.img mklabel gpt
-	parted -s bootman.img mkpart ESP fat32 2048s 100%
+	parted -s bootman.img mkEart ESP fat32 2048s 100%
 	parted -s bootman.img set 1 esp on
 	
 	sudo losetup -Pf --show bootman.hdd >loopback_dev
@@ -53,13 +55,6 @@ boot-bios:
 	fasm boot/mbr.asm
 boot-cd:
 	fasm boot/cdboot.asm
-bootman.SYS:
-	fasm Bootman/bootman.asm
-SysUtils:
-	mkdir -p utils
-	$(MAKE) -C cmd
-	$(MAKE) -C load32
-
 clean:
 
 	rm -rf Bootman.iso Bootman.img

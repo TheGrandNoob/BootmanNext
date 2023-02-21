@@ -160,7 +160,7 @@ boot_error:
 
 NotSupportedStr db "NotSupported",0x00
 System16Dir db "system16",0x00
-BootmanFile db "bootman.SYS",0x00
+BootmanFile db "bootman.sys",0x00
 
 BootPartitionSector dd 0x00
 

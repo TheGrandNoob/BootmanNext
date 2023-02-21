@@ -2,7 +2,7 @@ org 0x2000
 
 use16
 align 16
-FORMAT BINARY AS 'SYS'
+FORMAT BINARY AS 'sys'
 
 prg_begin:
 
@@ -69,7 +69,7 @@ main:
         ccall ReadFile , eax ,dword DISK_RW_BUFFER , dword 4096 , dword BytesRead
         ;ccall FreeHandle , [AutoRunFileHandle]
 
-        ccall exec, CmdSysPath
+        ccall exec, DISK_RW_BUFFER
 
         mov ah , 0x9
         mov dx , DISK_RW_BUFFER
