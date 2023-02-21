@@ -76,6 +76,6 @@ exec:
     mov ss , bx
     mov es , bx
     mov sp , 0xFFFF
-    jmp dword [cs:jmpToAdd]
+    jmp 0x3000:0
     
     ret
