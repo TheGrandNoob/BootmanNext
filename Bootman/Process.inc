@@ -67,13 +67,12 @@ exec:
     shl eax , cl 
     pop ax 
 
-    mov bx , 0
+    mov bx , es
     mov ds , bx
     mov es , bx
     mov ss , bx
     mov es , bx
     mov sp , 0xFFFF
-    
     jmp dword [jmpToAdd]
     
     ret
