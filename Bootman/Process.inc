@@ -67,8 +67,9 @@ exec:
     shl eax , cl 
     pop ax 
 
-    mov [jmpToAdd.addr] , eax 
-    mov [jmpToAdd.seg] , 0
+    mov [jmpToAdd.addr] , 0 
+    mov [jmpToAdd.seg] , es
+    
     mov bx , es
     mov ds , bx
     mov es , bx
