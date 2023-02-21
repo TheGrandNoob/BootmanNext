@@ -41,6 +41,10 @@ process_kernelObjectExecutor:
     int 21h
     retf
 
+jmpToAdd:
+    .addr   dd 0
+    .seg    dw 0 
+
 ;arg1 - path
 exec:
 
@@ -55,11 +59,21 @@ exec:
     ccall ReadFile , edx , eax , dword 65536 , dword BytesRead
     xchg bx , bx
 
-    mov ax , 0x3000
-    mov ds , ax
-    mov es , ax
-    mov ss , ax
+    mov ax , es
+    mov bx , 16
+    mul bx 
+    push ax
+    mov cl , 16
+    shl eax , cl 
+    pop ax 
+
+    mov bx , 0
+    mov ds , bx
+    mov es , bx
+    mov ss , bx
+    mov es , bx
     mov sp , 0xFFFF
-    jmp 0x3000:00
+    
+    jmp dword [jmpToAdd]
     
     ret

@@ -12,6 +12,7 @@ all-clean: clean
 
 Bootman: boot-bios boot-cd
 	fasm Bootman/bootman.asm
+	mkdir -p bin
 	cp -rf boot/*.bin bin
 	cp -rf Bootman/*.sys bin
 
