@@ -27,8 +27,8 @@ exec:
     mov edx , [bp+2] 
     int 21h 
 
-    push ebx
-    mov edx , ebx
+  
+    xor edx , edx
     mov ebx , eax
     mov ah , 0x3F
     mov ecx , 0xFFFF
