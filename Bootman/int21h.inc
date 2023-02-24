@@ -19,11 +19,11 @@ int21h:
 @@:
 
     cmp ah , 0x9
-    call int21h_display_string
     jne @f
+    call int21h_display_string
 @@:
     cmp ah , 0x3C
-    
+    jne @f
     push ebx
     xor ebx , ebx
     mov bl , al
@@ -32,9 +32,9 @@ int21h:
     pop ebx
 
     ccall CreateFile , edx , eax
-    jne @f
 @@:
     cmp ah , 0x3D
+    jne @f
     push ebx
     xor ebx , ebx
     mov bl , al
@@ -46,13 +46,14 @@ int21h:
     jne @f
 @@:
     cmp ah , 0x3F
+    jne @f
     ccall ReadFile , ebx , edx , ecx , Int21h_BytesRead
     jc @f
     mov eax , [Int21h_BytesRead]
-    jne @f
 @@:
 
     cmp ah , 0x63
+    jne @f
     push ds 
     mov ax , cs
     mov ds , ax
