@@ -54,6 +54,7 @@ main:
         mov [BootDiskPartition] , 0xFFFF
 
         ccall attach_partition, [BootPartitionSector]  , edx , 0
+        mov [currentPartition] , ax
 
         jc .diskError
         

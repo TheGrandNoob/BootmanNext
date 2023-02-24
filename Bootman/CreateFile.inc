@@ -15,7 +15,7 @@ CreateFile:
 .isGlobalPathWithDisk:  
 
     mov edi , FsPartitionTable
-    add edi , dword [currentPartition]
+    add edi , 0;dword [currentPartition]
     mov esi , 0
     mov si , word [ds:edi + Partition.fsType]
     mov eax , 0
