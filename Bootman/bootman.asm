@@ -21,11 +21,9 @@ CmdSysPath db "\system16\load32.sys$"
         include 'commondata.inc'
         include 'int21h.inc'
         include 'disks.inc'
-        include 'shell.inc'
         include 'process.inc'
         include 'memory.inc'
         include 'string.inc'
-        include 'krnlobject.inc'
         include 'errorcodes.inc'
         include "iso9660.inc"
         include "FatFs.inc"
@@ -36,7 +34,6 @@ main:
 
         call int21h_init
 	call memory_init  
-        call kernel_objects_init
               
         call disks_init
         jc .diskError
@@ -74,8 +71,9 @@ main:
         mov ah , 0x9
         mov dx , DISK_RW_BUFFER
         int 21h
-        call shell_task
-        call poweroff
+
+        mov edx , FileCfgErrorStr
+        call .error
 
 .diskError:
         mov edx , diskSubSysErrorStr
@@ -86,27 +84,8 @@ main:
         mov ah , 0
         int 16h
 
-
-poweroff:
-
-        mov     ax, 5301h
-        xor     bx, bx
-        int     15h
-
-        ;try to set APM version (to 1.2)
-        mov     ax, 530Eh
-        mov     cx, 0102h
-        xor     bx, bx
-        int     15h
-
-        ;turn off the system
-        mov     ax, 5307h
-        mov     bx, 0001h
-        mov     cx, 0003h
-        int     15h
-        hlt
-        ret
 align 16
+FileCfgErrorStr db "Cannot run:"
 DISK_RW_BUFFER:
 rb 4096
 

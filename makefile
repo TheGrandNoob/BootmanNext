@@ -16,12 +16,12 @@ Bootman: boot-bios boot-cd
 	cp -rf boot/*.bin bin
 	cp -rf Bootman/*.sys bin
 
-Bootman.iso: boot-bios boot-cd bootman.sys
+Bootman.iso: boot-bios boot-cd
+	fasm Bootman/bootman.asm
 	rm -rf iso_root
 	mkdir -p iso_root
 	mkdir -p iso_root/system16
-	cp Bootman/bootman.SYS iso_root/system16/
-	cp -r IsoFiles/* iso_root/
+	cp Bootman/bootman.sys iso_root/system16/
 	mkdir iso_root/boot
 	cp -r boot/*.bin iso_root/boot/
 	mkisofs -U -J \

@@ -5,41 +5,9 @@ init_process_manager:
 
     push ax bx cx
 
-    mov ax , KERNEL_OBJECT_TYPE_PROCESS
-    mov bp , cs
-    mov bx , bp
-    mov cx , process_kernelObjectExecutor
-    call AddKernelObjectExecuter
-
     pop cx bx ax
     ret
 
-;in 
-;type stdcall
-;arg1 - path
-;arg2 - argc
-;arg3 - argv
-;out
-;ax - handle
-CreateProcess:
-
-    push  bx cx
-
-    mov bx , 0x200
-    mov ax , KERNEL_OBJECT_TYPE_PROCESS
-    mov cx , process_kernelObjectExecutor
-    call AddKernelObject
-
-    pop cx bx 
-    ret
-
-
-KOBjExecutorStr_Process db "called process executor",0x0A,0x0D,'$'
-process_kernelObjectExecutor:
-    mov dx , KOBjExecutorStr_Process
-    mov ah , 0x9
-    int 21h
-    retf
 
 jmpToAdd:
     .addr   dd 0
@@ -50,13 +18,27 @@ exec:
 
     mov bp , sp
     
-    mov edx , [bp+2]
-    ccall CreateFile, edx ,FILE_OPEN_EXISTING
-
     mov edx , eax
     call memory_allocate_segment
-    mov eax , 0
-    ccall ReadFile , edx , eax , dword 65536 , dword BytesRead
+    mov edx , ebx
+
+    mov ah , 0x3C
+    mov edx , [bp+2] 
+    int 21h 
+
+    push ebx
+    mov edx , ebx
+    mov ebx , eax
+    mov ah , 0x3F
+    mov ecx , 0xFFFF
+    int 21h
+    pop ebx
+
+    ;mov edx , [bp+2]
+    ;ccall CreateFile, edx ,FILE_OPEN_EXISTING
+
+
+    ;ccall ReadFile , edx , eax , dword 65536 , dword BytesRead
     xchg bx , bx
 
     mov ax , es

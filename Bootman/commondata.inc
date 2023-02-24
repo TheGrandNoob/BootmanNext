@@ -1,5 +1,6 @@
 BootmanSeg dw 0x00
 MainDiskID db 0x00
+currentPartition dw 0
 BootPartitionSector dd 0x00
 BootDiskPartition dw 0x00
 
@@ -9,7 +10,6 @@ struc partition{
     dw type
 }
 
-currentPartition dw 0
 partitions rw 256
 currentPath rb 256
 partitionCount rb 0
