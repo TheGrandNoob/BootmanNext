@@ -16,6 +16,7 @@ jmpToAdd:
 ;arg1 - path
 exec:
 
+    xchg bx , bx
     mov bp , sp
     
     mov edx , eax
@@ -39,8 +40,6 @@ exec:
 
 
     ;ccall ReadFile , edx , eax , dword 65536 , dword BytesRead
-    xchg bx , bx
-
     mov ax , es
     mov bx , 16
     mul bx 
