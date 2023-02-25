@@ -75,7 +75,7 @@ dapack:
 ;es - segment
 read_sectors:
     	pusha
-        push eax
+        push ds eax
         mov ax , cs
         mov ds , ax
         pop eax
@@ -88,6 +88,7 @@ read_sectors:
     	mov ah, 0x42
     	mov si, dapack
     	int 0x13
+        pop ds
     	popa
     	ret
 
