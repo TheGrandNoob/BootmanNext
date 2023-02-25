@@ -17,11 +17,11 @@ CreateFile:
     mov edi , FsPartitionTable
     add edi , 0;dword [currentPartition]
     mov esi , 0
-    mov si , word [ds:edi + Partition.fsType]
+    mov si , word [cs:edi + Partition.fsType]
     mov eax , 0
-    mov ax , word [ds:edi + Partition.fsInfoAddr]
+    mov ax , word [cs:edi + Partition.fsInfoAddr]
     mov edx , 0
-    mov dx , word [ds:edi + Partition.fsInfoSeg]
+    mov dx , word [cs:edi + Partition.fsInfoSeg]
 
     mov ebx , [bp+2]
     inc ebx
@@ -33,9 +33,9 @@ CreateFile:
 
     mov ecx , esi
 
-    mov si , [LastFileIndex]
+    mov si , [cs:LastFileIndex]
     inc si 
-    mov [LastFileIndex] , si
+    mov [cs:LastFileIndex] , si
     dec si
 
     mov ax , si
@@ -43,19 +43,15 @@ CreateFile:
     mul bx 
     
     mov si , ax  
-    mov [ds:si + FilesTableBegin + FileT.fsType] , cx
+    mov [cs:si + FilesTableBegin + FileT.fsType] , cx
     mov ax , [LastTransactionDataAddr]
-    mov [ds:si + FilesTableBegin + FileT.fsInfoAddr] , ax
+    mov [cs:si + FilesTableBegin + FileT.fsInfoAddr] , ax
     mov ax , [LastTransactionDataSeg]
-    mov [ds:si + FilesTableBegin + FileT.fsInfoSeg] , ax
+    mov [cs:si + FilesTableBegin + FileT.fsInfoSeg] , ax
 
     mov esi ,  0
-    mov si , [LastFileIndex]
+    mov si , [cs:LastFileIndex]
     dec si
     mov eax , esi 
-    ;mov ax , [ss:bp]
-
-    ;mov ax , KERNEL_OBJECT_TYPE_FILE
-    ;call AddKernelObject
 .end:
     ret
