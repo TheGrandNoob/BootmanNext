@@ -231,10 +231,10 @@ IsoFs_SearchInDir:
     mov ax , cs 
     mov ds , ax
 
+    call FsFragmentLenght
     pop ax
     add si , 33
     mov di , dx
-    call FsFragmentLenght
     call memcmp
     pop es ds
     je .Found

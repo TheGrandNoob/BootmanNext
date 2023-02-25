@@ -115,13 +115,14 @@ disks_getbpbType:
     jl @b
 .IsValidated:
     ret
+;ds:dx - str
 FsFragmentLenght:
     push ax dx si 
     mov si , dx
     mov dx , 0
 
 @@:
-    mov al , [es:si]
+    mov al , [ds:si]
 
     cmp al , '\'
     je .end
