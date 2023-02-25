@@ -231,6 +231,7 @@ IsoFs_SearchInDir:
     mov ax , cs 
     mov ds , ax
 
+    pop ax
     add si , 33
     mov di , dx
     call FsFragmentLenght
