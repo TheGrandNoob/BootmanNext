@@ -121,7 +121,7 @@ FsFragmentLenght:
     mov dx , 0
 
 @@:
-    mov al , [ds:si]
+    mov al , [es:si]
 
     cmp al , '\'
     je .end
