@@ -225,13 +225,15 @@ IsoFs_SearchInDir:
     je .NotFound
 
     push ds es ax
+
+    call FsFragmentLenght
+
     mov ax , ds
     mov es , ax 
 
     mov ax , cs 
     mov ds , ax
 
-    call FsFragmentLenght
     pop ax
     add si , 33
     mov di , dx
