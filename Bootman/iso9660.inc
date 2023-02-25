@@ -91,6 +91,8 @@ isofs_init:
 ;arg4 - data segment
 ;arg5 - data addr
 isofs_cmd_read:
+
+    xchg bx , bx
     mov bp , sp
      
     mov eax , [ss:bp+2]
