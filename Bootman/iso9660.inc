@@ -267,8 +267,14 @@ isofs_cmd_create:
     mov es , si
     mov cx , 2
 
-    
+    push es ax
+    mov ax , cs
+    mov es , ax 
+    pop ax 
+
     call read_sectors
+    
+    pop es 
 
     push es
     mov esi , [bp+6]
