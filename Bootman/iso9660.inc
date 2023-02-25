@@ -234,8 +234,8 @@ IsoFs_SearchInDir:
     add si , 33
     mov di , dx
     call FsFragmentLenght
-    pop ds
     call memcmp
+    pop ds
     je .Found
     sub si , 33
 
