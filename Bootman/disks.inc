@@ -222,12 +222,12 @@ attach_partition:
     jne @f
     call disks_getLabel    
 @@:
-    mov byte [si + Partition.label] , al
-    mov [currentPath] , al
+    mov byte [cs:si + Partition.label] , al
+    mov [cs:currentPath] , al
 
-    mov [currentPath+1] , ':'
-    mov [currentPath+2] , '\'
-    mov [currentPath+3] , '$'
+    mov [cs:currentPath+1] , ':'
+    mov [cs:currentPath+2] , '\'
+    mov [cs:currentPath+3] , '$'
     mov eax , 0
     jmp .end
 .NotFound:
@@ -312,9 +312,9 @@ attach_fs_executor:
 
     xor dx , dx
 
-    mov ax , [lastFsExecutorId]
+    mov ax , [cs:lastFsExecutorId]
     inc ax 
-    mov [lastFsExecutorId] , ax
+    mov [cs:lastFsExecutorId] , ax
     dec ax 
     
     mov bx , PTR_SIZE
@@ -323,10 +323,10 @@ attach_fs_executor:
     mov si , ax
 
     mov ax , [ss:bp+2]
-    mov [ds:si] , ax
+    mov [cs:si] , ax
 
     mov esi , 0
-    mov si , [lastFsExecutorId]
+    mov si , [cs:lastFsExecutorId]
     dec si
     ccall fs_executor_exec, esi, FS_EXECUTOR_CMD_INIT
 
