@@ -224,10 +224,18 @@ IsoFs_SearchInDir:
     cmp byte [cs:si] , 0
     je .NotFound
 
+    push ds es ax
+    mov ax , ds
+    mov es , ax 
+
+    mov ax , cs 
+    mov ds , ax
+
     add si , 33
     mov di , dx
     call FsFragmentLenght
     call memcmp
+    pop es ds
     je .Found
     sub si , 33
 
