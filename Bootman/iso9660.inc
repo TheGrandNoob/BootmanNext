@@ -92,14 +92,12 @@ isofs_init:
 ;arg5 - data addr
 isofs_cmd_read:
     mov bp , sp
-    push ds
      
     mov eax , [ss:bp+2]
     mov eax , [ss:bp+6]
     mov eax , [ss:bp+10]
 
     mov eax , dword [ss:bp+14]
-    mov ds , ax
 
     mov eax , [ss:bp+18]
     mov esi , eax
@@ -131,7 +129,6 @@ isofs_cmd_read:
 .buffered_read:
 
 .end:
-    pop ds
     ret
 isofs_cmd_free:
 
@@ -227,15 +224,10 @@ IsoFs_SearchInDir:
     cmp byte [cs:si] , 0
     je .NotFound
 
-    push ds ax 
-    mov ax , cs 
-    mov ds , ax
-    pop ax 
     add si , 33
     mov di , dx
     call FsFragmentLenght
     call memcmp
-    pop ds
     je .Found
     sub si , 33
 
