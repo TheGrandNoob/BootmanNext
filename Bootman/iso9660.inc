@@ -259,6 +259,7 @@ IsoFs_SearchInDir:
 
 isofs_cmd_create:
 
+    xchg bx , bx
     mov bp , sp
 
     mov esi , [bp+6]
