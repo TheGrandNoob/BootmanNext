@@ -75,8 +75,10 @@ dapack:
 ;es - segment
 read_sectors:
     	pusha
+        push eax
         mov ax , cs
         mov ds , ax
+        pop eax
 
     	mov dword [dapack_LBA], eax
     	mov word  [dapack_nblocks], cx
