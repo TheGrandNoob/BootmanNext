@@ -75,6 +75,9 @@ dapack:
 ;es - segment
 read_sectors:
     	pusha
+        mov ax , cs
+        mov ds , ax
+
     	mov dword [dapack_LBA], eax
     	mov word  [dapack_nblocks], cx
     	mov word  [dapack_offset], bx
@@ -205,13 +208,13 @@ attach_partition:
     pop bx ax
     
     
-    mov byte [si + Partition.flags] , PARTITON_FLAG_MOUTED
-    mov word [si + Partition.fsType] , ax
+    mov byte [cs:si + Partition.flags] , PARTITON_FLAG_MOUTED
+    mov word [cs:si + Partition.fsType] , ax
 
-    mov ax , [LastTransactionDataAddr]
-    mov word [si + Partition.fsInfoAddr] , ax
-    mov ax , [LastTransactionDataSeg]
-    mov word [si + Partition.fsInfoSeg] , ax
+    mov ax , [cs:LastTransactionDataAddr]
+    mov word [cs:si + Partition.fsInfoAddr] , ax
+    mov ax , [cs:LastTransactionDataSeg]
+    mov word [cs:si + Partition.fsInfoSeg] , ax
     
     cmp bh , [ss:bp+10]
     jne @f
@@ -252,10 +255,10 @@ ReadFile:
     mov eax , 0
     mov ebx , 0
     
-    mov ax , word [ds:si + FilesTableBegin + FileT.fsInfoSeg]
-    mov bx , word [ds:si + FilesTableBegin + FileT.fsInfoAddr]
+    mov ax , word [cs:si + FilesTableBegin + FileT.fsInfoSeg]
+    mov bx , word [cs:si + FilesTableBegin + FileT.fsInfoAddr]
     mov ecx , 0
-    mov cx ,[ds:si + FilesTableBegin + FileT.fsType]
+    mov cx ,[cs:si + FilesTableBegin + FileT.fsType]
 
     ccall fs_executor_exec, ecx , FS_EXECUTOR_CMD_READ_FILE,[ss:bp+6],[ss:bp+10],[ss:bp+14],eax, ebx
 
@@ -345,7 +348,7 @@ fs_executor_exec:
     mul cx
     add ax , FsExecutorTableBegin
     mov si , ax
-    mov di , [ds:si]
+    mov di , [cs:si]
 
 
     cmp dword [ss:bp+6] , FS_EXECUTOR_CMD_INIT

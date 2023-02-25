@@ -103,7 +103,7 @@ isofs_cmd_read:
 
     mov eax , [ss:bp+18]
     mov esi , eax
-    mov ecx , dword [si + IsoFsFile.Size] 
+    mov ecx , dword [cs:si + IsoFsFile.Size] 
 
     mov eax , dword [ss:bp+6]
     cmp ecx , dword [ss:bp+6]
@@ -123,9 +123,9 @@ isofs_cmd_read:
         inc eax
     @@:
     mov ecx , eax 
-    mov eax , [si + IsoFsFile.StartSector]
+    mov eax , [cs:si + IsoFsFile.StartSector]
     mov ebx , [ss:bp+2]
-    mov dl , [si + IsoFsFile.diskId] 
+    mov dl , [cs:si + IsoFsFile.diskId] 
     call read_sectors
     jmp .end
 .buffered_read:
