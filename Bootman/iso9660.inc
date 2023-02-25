@@ -224,7 +224,7 @@ IsoFs_SearchInDir:
 
     push cx dx si
 @@:
-    cmp byte [ds:si] , 0
+    cmp byte [cs:si] , 0
     je .NotFound
 
     add si , 33
@@ -234,7 +234,7 @@ IsoFs_SearchInDir:
     je .Found
     sub si , 33
 
-    movzx di , byte [ds:si]
+    movzx di , byte [cs:si]
     add si , di
 
     jmp @b
@@ -244,7 +244,7 @@ IsoFs_SearchInDir:
     jmp .end
 
 .Found:
-    mov eax , [ds:si+2-33]
+    mov eax , [cs:si+2-33]
     mov ebx , ISOFS_FILE_STATUS_FOUND
     sub si , 33
     mov edi , esi
@@ -260,8 +260,8 @@ isofs_cmd_create:
     mov eax , [bp+10]
     mov es , ax 
 
-    mov eax , dword [si]
-    mov dl , byte [si+IsoFsPartition.diskId]
+    mov eax , dword [cs:si]
+    mov dl , byte [cs:si+IsoFsPartition.diskId]
     mov ebx , ISO_FsDiskRwBuffer
     mov si , cs
     mov es , si
@@ -281,7 +281,7 @@ isofs_cmd_create:
     mov eax , [bp+10]
     mov es , ax 
 
-    mov dl , byte [si+IsoFsPartition.diskId]
+    mov dl , byte [cs:si+IsoFsPartition.diskId]
     pop es
 
     mov si , ISO_FsDiskRwBuffer
@@ -300,7 +300,7 @@ isofs_cmd_create:
 
     call strlen
     add cx , dx
-    mov [pathLenght] , cx
+    mov [cs:pathLenght] , cx
 .startSearch:
 @@:
     mov si , ISO_FsDiskRwBuffer
@@ -313,7 +313,7 @@ isofs_cmd_create:
     call FsFragmentLenght
     add dx , cx
     inc dx
-    cmp dx , word [pathLenght]
+    cmp dx , word [cs:pathLenght]
     
     jge .Found
     
@@ -324,7 +324,7 @@ isofs_cmd_create:
     mov si , cs
     mov es , si
     mov esi , [bp+6]
-    mov dl ,  byte [si+IsoFsPartition.diskId]
+    mov dl ,  byte [cs:si+IsoFsPartition.diskId]
     mov cx , 2
 
     
@@ -336,23 +336,23 @@ isofs_cmd_create:
 
 .Found:
 
-    mov si , [IsoFsLastFileOffset]
-    mov [LastTransactionDataAddr] , si
+    mov si , [cs:IsoFsLastFileOffset]
+    mov [cs:LastTransactionDataAddr] , si
 
-    mov ecx ,  dword [ds:di+10]
-    mov [ds:si + IsoFsFile.Size] , ecx
-    mov eax , [ds:di+2]
-    mov [ds:si + IsoFsFile.StartSector] , eax
+    mov ecx ,  dword [cs:di+10]
+    mov [cs:si + IsoFsFile.Size] , ecx
+    mov eax , [cs:di+2]
+    mov [cs:si + IsoFsFile.StartSector] , eax
     mov esi , [bp+6]
-    mov dl ,  byte [si+IsoFsPartition.diskId]
+    mov dl ,  byte [cs:si+IsoFsPartition.diskId]
     
-    mov si , [IsoFsLastFileOffset]
-    mov [ds:si + IsoFsFile.diskId] , dl
+    mov si , [cs:IsoFsLastFileOffset]
+    mov [cs:si + IsoFsFile.diskId] , dl
 
-    mov si , [IsoFsLastFileOffset]
-    mov [LastTransactionDataAddr] , si
+    mov si , [cs:IsoFsLastFileOffset]
+    mov [cs:LastTransactionDataAddr] , si
     add si , IsoFsFile_t_sizeof
-    mov [IsoFsLastFileOffset] , si
+    mov [cs:IsoFsLastFileOffset] , si
 
     jmp @f
 .NotFound:
