@@ -44,9 +44,9 @@ CreateFile:
     
     mov si , ax  
     mov [cs:si + FilesTableBegin + FileT.fsType] , cx
-    mov ax , [LastTransactionDataAddr]
+    mov ax , [cs:LastTransactionDataAddr]
     mov [cs:si + FilesTableBegin + FileT.fsInfoAddr] , ax
-    mov ax , [LastTransactionDataSeg]
+    mov ax , [cs:LastTransactionDataSeg]
     mov [cs:si + FilesTableBegin + FileT.fsInfoSeg] , ax
 
     mov esi ,  0

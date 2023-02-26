@@ -201,8 +201,8 @@ isofs_cmd_attach:
     mov dword [si+IsoFsPartition.fsStartSector] , eax
     mov byte [si+IsoFsPartition.diskId] , dl
 
-    mov [LastTransactionDataAddr] , si
-    mov [LastTransactionDataSeg] , ds
+    mov [cs:LastTransactionDataAddr] , si
+    mov [cs:LastTransactionDataSeg] , ds
 
     add si , IsoFsPartition_t_sizeof
     mov [IsoFsLastPartitionOffset] , si
