@@ -36,7 +36,7 @@ IsoFsPartitions: rept 16 n:0 {IsoFsPartition_#n#_ IsoFsPartition_t}
 ;arg1 - function
 isofs_executor:
 
-    mov [LastTransactionDataAddr] , word 0
+    mov [cs:LastTransactionDataAddr] , word 0
     mov bp , sp 
     mov ebx , [ss:bp+2]
 
@@ -80,8 +80,8 @@ isofs_executor:
     ret
 isofs_init:
 
-    mov [IsoFsLastPartitionOffset] , IsoFsPartitions 
-    mov [IsoFsLastFileOffset] , IsoFsFiles
+    mov [cs:IsoFsLastPartitionOffset] , IsoFsPartitions 
+    mov [cs:IsoFsLastFileOffset] , IsoFsFiles
 
     ret
 
